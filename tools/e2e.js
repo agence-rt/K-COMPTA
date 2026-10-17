@@ -28,7 +28,7 @@ const assert = require('assert');
   await page.addInitScript(() => {
     const c = ch => async (...a) => { const r = await window.__call(ch, a); if (r.e) throw new Error(r.e); return r.v; };
     window.agoa = { openFile: { pending: c('app:pendingOpen'), onOpen: () => {} },
-      cfg: { get: c('cfg:get'), setGoogle: c('cfg:setGoogle'), chooseRoot: c('cfg:chooseRoot') },
+      cfg: { get: c('cfg:get'), chooseRoot: c('cfg:chooseRoot') },
       auth: { session: c('auth:session'), login: c('auth:login'), logout: c('auth:logout') },
       period: { load: c('period:load'), save: c('period:save'), saveSync: () => true },
       inbox: { list: c('inbox:list'), importAll: c('inbox:importAll') }, statement: { pick: c('statement:pick') },

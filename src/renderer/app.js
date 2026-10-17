@@ -282,13 +282,8 @@ function setHTML(){
     '<p style="margin:0 0 10px"><span class="pill '+(c.root?'ok':'bad')+'">'+(c.root?(c.rootSource==='config'?'Dossier choisi':'Trouvé automatiquement'):'Non trouvé')+'</span></p>'+
     '<button class="btn" data-act="chooseroot">Choisir le dossier…</button></div>'+
     '<div class="card"><h3>Connexion Google</h3><p style="margin:0 0 10px;font-size:13px">Le logiciel ne se lance qu\'après connexion avec le compte <b>'+esc(g.email||'agence@remithollet.fr')+'</b>.</p>'+
-    '<p style="margin:0 0 10px"><span class="pill '+(g.configured?'ok':'todo')+'">'+(g.configured?'Connexion Google configurée':'Connexion Google non configurée')+'</span></p>'+googleForm(g)+'</div>'+
+    '<p style="margin:0 0 10px"><span class="pill '+(g.configured?'ok':'bad')+'">'+(g.configured?'Connexion Google active':'Identifiants Google absents')+'</span></p></div>'+
     '<div class="card"><h3>À propos</h3><p style="margin:0;font-size:13px">AGOA COMPTA '+esc((c.version)||'')+'<br>Données enregistrées dans le dossier AGOA-COMPTA de la Dropbox, partagées entre les postes.</p></div></div>';
-}
-function googleForm(g){
-  return '<div class="gform"><label>Identifiant client<input data-f="gid" value="'+esc(g.clientId||'')+'" autocomplete="off" spellcheck="false"></label>'+
-    '<label>Secret client<input data-f="gsecret" type="password" value="" placeholder="'+(g.hasSecret?'(enregistré)':'')+'" autocomplete="off"></label>'+
-    '<button class="btn" data-act="savegoogle">Enregistrer</button></div>';
 }
 
 function refresh(){
@@ -344,7 +339,7 @@ function gateHTML(){
   if(a==='checking'){h='Démarrage…';p='Chargement des réglages.'}
   else if(a==='denied'){h='Accès refusé';p=esc(S.authMsg||'Ce compte n\'est pas autorisé.');btns='<button class="btn primary" data-act="login">Se connecter avec un autre compte</button>'}
   else if(g.configured){h='Connexion';p='Pour utiliser AGOA COMPTA, identifiez-vous avec le compte Google <b>'+esc(mail)+'</b>. Un navigateur va s\'ouvrir.'+(S.authMsg?'<br><b style="color:var(--bad)">'+esc(S.authMsg)+'</b>':'');btns='<button class="btn primary" data-act="login">Continuer avec Google</button>'}
-  else{h='Connexion Google à configurer';p='Le logiciel ne se lance qu\'après une connexion Google avec <b>'+esc(mail)+'</b>. Renseignez une fois l\'identifiant client Google (application de bureau) de l\'agence.';extra=googleForm(g)}
+  else{h='Connexion Google indisponible';p='Le logiciel ne se lance qu\'après une connexion Google avec <b>'+esc(mail)+'</b>. Les identifiants Google ne sont pas intégrés à cette version du logiciel : contactez l\'administrateur.'}
   return '<div class="win">'+tb+'<div class="gate"><div class="card"><span class="logo" aria-hidden="true">CPT</span><h1>'+h+'</h1><p>'+p+'</p>'+extra+(btns?'<div class="ed-act">'+btns+'</div>':'')+'</div></div></div>';
 }
 async function start(){
@@ -399,10 +394,6 @@ root.addEventListener('click',async e=>{
   const a=b.dataset.act,id=b.dataset.id,v=b.dataset.v;
   if(a==='login'){S.authMsg='';const r=await A.auth.login();if(r.ok){S.me=r.user;S.auth='ok';await enter()}else{S.auth=r.denied?'denied':'needs';S.authMsg=r.message||'';render()}return}
   if(a==='logout'){await flushSave();await A.auth.logout();S.auth='needs';S.me=null;S.data={};render();return}
-  if(a==='savegoogle'){
-    const g={clientId:$('[data-f=gid]').value.trim()},sec=$('[data-f=gsecret]').value;if(sec)g.clientSecret=sec;
-    S.cfg=await A.cfg.setGoogle(g);toast('Réglages Google enregistrés.');render();return;
-  }
   if(a==='chooseroot'){const r=await A.cfg.chooseRoot();if(r&&r.cfg){S.cfg=r.cfg;S.data={};await load();render();refreshInbox();toast('Dossier enregistré.')}return}
   if(S.auth!=='ok')return;
   const l=id?find(id):null,st=store();

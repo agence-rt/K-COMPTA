@@ -20,7 +20,7 @@ function openCompta(file) {
 
 function boot() {
   const userData = app.getPath('userData');
-  let defaults = {}; try { defaults = require('./google.json'); } catch (e) { /* identifiants Google non embarqués : à saisir au premier lancement */ }
+  let defaults = {}; try { defaults = require('./google.generated.js'); } catch (e) { /* identifiants Google non embarqués : l'écran de connexion l'indique */ }
   const config = new Config(path.join(userData, 'config.json'), defaults);
   // La connexion Google est exigée à chaque lancement : aucune session n'est conservée sur le disque.
   const auth = new Auth({ getConfig: () => config.get(), openExternal: url => shell.openExternal(url) });

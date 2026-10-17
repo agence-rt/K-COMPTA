@@ -12,7 +12,7 @@ Comptabilité et déclarations de TVA (CA3) de **THOMAS KOCHANSKI ARCHITECTE** (
 Les données de chaque période sont enregistrées automatiquement dans un fichier `periode.compta` (dossier de la période), donc partagées via Dropbox. Le format `.compta` est lié à l'application : un double-clic sur un fichier `.compta` ouvre AGOA COMPTA directement sur cette période (association créée par l'installateur).
 
 ## Connexion Google
-La connexion Google est obligatoire à chaque lancement et seul le compte `agence@remithollet.fr` donne accès au logiciel (pas de mode local). L'identifiant client OAuth « application de bureau » (Google Cloud Console) peut être embarqué au build via les secrets GitHub `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`, sinon il est saisi une fois sur l'écran de connexion.
+La connexion Google est obligatoire à chaque lancement et seul le compte `agence@remithollet.fr` donne accès au logiciel (pas de mode local). Les identifiants OAuth (client « application de bureau » Google Cloud) sont intégrés au build à partir des secrets GitHub `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` ; le build échoue s'ils manquent. Aucune saisie dans l'application.
 
 ## Installation et mises à jour
 L'installateur place l'application dans `C:\AGOA\COMPTA`. À chaque lancement, elle cherche la dernière version publiée sur GitHub (releases de agence-rt/K-COMPTA), la télécharge, l'installe et se relance ; hors ligne, elle démarre normalement. Chaque push sur `main` publie une nouvelle version (0.1.N) via GitHub Actions.

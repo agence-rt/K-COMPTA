@@ -20,11 +20,6 @@ function createApi({ config, auth, dialogs, openPath, version, pending }) {
 
   const api = {
     'cfg:get': () => publicCfg(),
-    'cfg:setGoogle': g => {
-      const cur = config.get().google || {};
-      config.set({ google: { clientId: String(g.clientId || '').trim(), clientSecret: g.clientSecret != null ? String(g.clientSecret).trim() : cur.clientSecret || '' } });
-      return publicCfg();
-    },
     'cfg:chooseRoot': async () => {
       const p = await dialogs.folder('Choisir le dossier 003-COMPTABILITE de la Dropbox');
       if (!p) return null;
