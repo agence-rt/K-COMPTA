@@ -2,8 +2,9 @@
 (function(){
 'use strict';
 const C=window.AgoaCalc, A=window.agoa;
-const {SOC,RATES_DEP,RATES_REC,r2,fmt,fmt0,rl,frFull,slug,TYPE_LABEL,TYPE_NOTE,TYPE_SHORT,lineTTC,vTva,vTTC,remain,needsDoc,lineState}=C;
-const parse=s=>{const v=parseFloat(String(s).replace(/[\s  ]/g,'').replace(',','.'));return isNaN(v)?0:Math.max(v,0)};
+const {SOC,RATES_DEP,RATES_REC,r2,rl,frFull,slug,TYPE_LABEL,TYPE_NOTE,TYPE_SHORT,lineTTC,vTva,vTTC,remain,needsDoc,lineState}=C;
+const fmt=n=>C.fmt(n)+'\u00a0€', fmt0=n=>C.fmt0(n)+'\u00a0€';
+const parse=s=>{const v=parseFloat(String(s).replace(/[\s\u00a0\u202f€]/g,'').replace(',','.'));return isNaN(v)?0:Math.max(v,0)};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=(s,r)=>(r||document).querySelector(s);
 const fr=d=>{const p=String(d).split('-');return p.length===3?p[2]+'/'+p[1]:d};
@@ -158,7 +159,7 @@ function edHTML(l){
     '<td><input class="mono" inputmode="decimal" data-f="vtva" data-id="'+l.id+'" data-i="'+i+'" value="'+fmt(vTva(v))+'" aria-label="Montant de TVA"></td>'+
     '<td class="mono" id="vt-'+l.id+'-'+i+'" style="text-align:right"></td>'+
     '<td><button class="ico" data-act="rmvent" data-id="'+l.id+'" data-i="'+i+'" aria-label="Retirer ce taux">'+IC.x+'</button></td></tr>').join('');
-  return '<div class="ed"><div class="ed-h"><strong>'+(dep?'Dépense':'Recette')+'</strong> · montant TTC de la ligne : <span class="mono"><b id="ttc-'+l.id+'"></b></span> €'+(dep?' · saisissez la base HT pour chaque taux, le reste est hors TVA.':' · la totalité doit être ventilée entre 10 % et 20 %.')+'</div>'+
+  return '<div class="ed"><div class="ed-h"><strong>'+(dep?'Dépense':'Recette')+'</strong> · montant TTC de la ligne : <span class="mono"><b id="ttc-'+l.id+'"></b></span>'+(dep?' · saisissez la base HT pour chaque taux, le reste est hors TVA.':' · la totalité doit être ventilée entre 10 % et 20 %.')+'</div>'+
     '<div class="scroll"><table class="vt"><thead><tr><th>Taux</th><th style="text-align:right">Base HT</th><th style="text-align:right">TVA</th><th style="text-align:right">TTC</th><th></th></tr></thead><tbody>'+vr+'</tbody></table></div>'+
     '<div class="ed-act"><button class="btn small" data-act="addvent" data-id="'+l.id+'">+ Ajouter un taux</button>'+
     '<button class="btn small" data-act="all" data-v="20" data-id="'+l.id+'">Tout à 20 %</button><button class="btn small" data-act="all" data-v="10" data-id="'+l.id+'">Tout à 10 %</button>'+
@@ -201,7 +202,7 @@ function synOutHTML(){
   const rowsFor=o=>{const k=Object.keys(o).map(Number).sort((a,b)=>b-a);return k.length?k.map(r=>'<tr><td>'+rl(r)+'</td><td class="r mono">'+fmt(o[r].ht)+'</td><td class="r mono">'+fmt(o[r].tva)+'</td></tr>').join(''):'<tr><td colspan="3" class="muted">Aucune ligne</td></tr>'};
   const det='<div class="card"><h3>Détail par taux</h3><div class="scroll"><table class="tbl"><thead><tr><th>Recettes</th><th class="r">Base HT</th><th class="r">TVA collectée</th></tr></thead><tbody>'+rowsFor(t.rec)+'</tbody></table>'+
     '<table class="tbl" style="margin-top:12px"><thead><tr><th>Dépenses</th><th class="r">Base HT</th><th class="r">TVA déductible</th></tr></thead><tbody>'+rowsFor(t.dep)+'</tbody></table></div></div>';
-  return '<div class="result '+res+'"><span>'+lab+'</span><span class="big">'+(D.TD===0?'0':fmt0(Math.abs(D.TD)))+' €</span></div>'+
+  return '<div class="result '+res+'"><span>'+lab+'</span><span class="big">'+fmt0(Math.abs(D.TD))+'</span></div>'+
     '<div class="card scroll">'+f+'<div style="margin-top:10px"><button class="btn" data-act="copy">Copier les montants</button></div></div>'+det;
 }
 function synChecksHTML(){
@@ -262,7 +263,7 @@ function docHTML(){
   const sl=st.statements.length?st.statements.map(f=>'<li><span class="new">'+esc(f.name)+'</span></li>').join(''):'<li class="exist">(aucun relevé importé)</li>';
   return '<div class="spec"><div class="card"><h3>Rangement</h3><div class="scroll"><ul class="tree root"><li>003-COMPTABILITE/</li><li><ul class="tree">'+
     '<li class="exist">ARCHI PRO/ · anciennes déclarations et bilans</li><li class="exist">FAURIEL49/ · anciennes déclarations et bilans</li>'+
-    '<li>AGOA-COMPTA/<ul class="tree"><li><span class="new">A-TRAITER/</span> <span class="exist">· relevés déposés, lus puis rangés</span></li><li>'+esc(s.folder)+'/'+yearOf()+'/'+p.folder+'/<ul class="tree"><li>periode.json <span class="exist">· lignes, classement, soldes</span></li><li>releves/<ul class="tree">'+sl+'</ul></li><li>justificatifs/<ul class="tree">'+jl+'</ul></li><li>exports/</li></ul></li></ul></li></ul></li></ul></div>'+
+    '<li>AGOA-COMPTA/<ul class="tree"><li><span class="new">A-TRAITER/</span> <span class="exist">· relevés déposés, lus puis rangés</span></li><li>'+esc(s.folder)+'/'+yearOf()+'/'+p.folder+'/<ul class="tree"><li>periode.compta <span class="exist">· lignes, classement, soldes</span></li><li>releves/<ul class="tree">'+sl+'</ul></li><li>justificatifs/<ul class="tree">'+jl+'</ul></li><li>exports/</li></ul></li></ul></li></ul></li></ul></div>'+
     '<p style="margin:10px 0 0"><button class="btn small" data-act="openfolder">Ouvrir le dossier de la période</button></p></div>'+
     '<div class="card"><h3>Dossier de la période</h3><p style="margin:0 0 8px;font-size:13px;word-break:break-all">'+esc(base)+'</p><ul class="chk" id="docchk"></ul></div></div>';
 }
@@ -280,14 +281,13 @@ function setHTML(){
     '<p style="margin:0 0 10px;font:12px/1.5 var(--mono);word-break:break-all">'+(c.root?esc(c.root):'(introuvable)')+'</p>'+
     '<p style="margin:0 0 10px"><span class="pill '+(c.root?'ok':'bad')+'">'+(c.root?(c.rootSource==='config'?'Dossier choisi':'Trouvé automatiquement'):'Non trouvé')+'</span></p>'+
     '<button class="btn" data-act="chooseroot">Choisir le dossier…</button></div>'+
-    '<div class="card"><h3>Connexion Google</h3><p style="margin:0 0 10px;font-size:13px">Accès limité aux adresses <b>@'+esc(g.domain||'remithollet.fr')+'</b>.</p>'+
+    '<div class="card"><h3>Connexion Google</h3><p style="margin:0 0 10px;font-size:13px">Le logiciel ne se lance qu\'après connexion avec le compte <b>'+esc(g.email||'agence@remithollet.fr')+'</b>.</p>'+
     '<p style="margin:0 0 10px"><span class="pill '+(g.configured?'ok':'todo')+'">'+(g.configured?'Connexion Google configurée':'Connexion Google non configurée')+'</span></p>'+googleForm(g)+'</div>'+
     '<div class="card"><h3>À propos</h3><p style="margin:0;font-size:13px">AGOA COMPTA '+esc((c.version)||'')+'<br>Données enregistrées dans le dossier AGOA-COMPTA de la Dropbox, partagées entre les postes.</p></div></div>';
 }
 function googleForm(g){
   return '<div class="gform"><label>Identifiant client<input data-f="gid" value="'+esc(g.clientId||'')+'" autocomplete="off" spellcheck="false"></label>'+
     '<label>Secret client<input data-f="gsecret" type="password" value="" placeholder="'+(g.hasSecret?'(enregistré)':'')+'" autocomplete="off"></label>'+
-    '<label>Domaine autorisé<input data-f="gdomain" value="'+esc(g.domain||'remithollet.fr')+'" autocomplete="off" spellcheck="false"></label>'+
     '<button class="btn" data-act="savegoogle">Enregistrer</button></div>';
 }
 
@@ -299,13 +299,13 @@ function refresh(){
     if(e){
       if(a.empty){e.className='pill';e.textContent='Aucun mouvement'}
       else if(Math.abs(a.ecart)<0.005){e.className='pill ok';e.textContent='Solde concordant'}
-      else{e.className='pill bad';e.textContent='Écart '+(a.ecart>0?'+':'−')+fmt(Math.abs(a.ecart))+' €'}
+      else{e.className='pill bad';e.textContent='Écart '+(a.ecart>0?'+':'−')+fmt(Math.abs(a.ecart))}
     }
-    const mv=$('#mv-'+b.id);if(mv)mv.textContent=(a.c-a.d>=0?'+':'−')+fmt(Math.abs(a.c-a.d))+' €';
-    const cl=$('#calc-'+b.id);if(cl)cl.textContent=fmt(a.calc)+' €';
+    const mv=$('#mv-'+b.id);if(mv)mv.textContent=(a.c-a.d>=0?'+':'−')+fmt(Math.abs(a.c-a.d))+'';
+    const cl=$('#calc-'+b.id);if(cl)cl.textContent=fmt(a.calc)+'';
     const tt=$('#tt-'+b.id),A=st.accounts[b.id];
     if(tt&&A.td!=null){const ok=Math.abs(A.td-a.d)<0.005&&Math.abs(A.tc-a.c)<0.005;
-      tt.textContent='−'+fmt(A.td)+' / +'+fmt(A.tc)+' €'+(ok?' · concordent':' · écart');
+      tt.textContent='−'+fmt(A.td)+' / +'+fmt(A.tc)+(ok?' · concordent':' · écart');
       tt.title=ok?'Concordent avec les lignes':'Lignes : débits '+fmt(a.d)+', crédits '+fmt(a.c);
       tt.style.color=ok?'var(--ok)':'var(--bad)'}
   });
@@ -319,9 +319,9 @@ function refresh(){
     const ef=$('#ef-'+l.id);
     if(ef){
       const r=remain(l);
-      if(r<-0.005){ef.className='msg bad';ef.textContent='La ventilation dépasse la ligne de '+fmt(-r)+' €.'}
-      else if(l.type==='rec'&&r>0.005){ef.className='msg bad';ef.textContent='Reste à ventiler : '+fmt(r)+' €.'}
-      else if(r>0.005){ef.className='msg info';ef.textContent='Part hors TVA : '+fmt(r)+' €, non soumise à TVA.'}
+      if(r<-0.005){ef.className='msg bad';ef.textContent='La ventilation dépasse la ligne de '+fmt(-r)+'.'}
+      else if(l.type==='rec'&&r>0.005){ef.className='msg bad';ef.textContent='Reste à ventiler : '+fmt(r)+'.'}
+      else if(r>0.005){ef.className='msg info';ef.textContent='Part hors TVA : '+fmt(r)+', non soumise à TVA.'}
       else{ef.className='msg ok';ef.textContent='Ligne entièrement ventilée.'}
     }
     const dc=$('#dc-'+l.id);if(dc)dc.innerHTML=docCell(l);
@@ -336,15 +336,15 @@ const _refresh=refresh;
 refresh=function(){_refresh();queueSave()};
 
 /* ---------- connexion ---------- */
-function userChip(){const m=S.me||{};return '<span class="usr"><span>'+esc(m.name||'')+(m.local?' · mode local':'')+'</span><button class="lnk" data-act="logout">Se déconnecter</button></span>'}
+function userChip(){const m=S.me||{};return '<span class="usr"><span>'+esc(m.email||m.name||'')+'</span><button class="lnk" data-act="logout">Se déconnecter</button></span>'}
 function gateHTML(){
-  const a=S.auth,c=S.cfg||{},g=c.google||{};
+  const a=S.auth,c=S.cfg||{},g=c.google||{},mail=g.email||'agence@remithollet.fr';
   const tb='<div class="tb"><span class="appico" aria-hidden="true">CPT</span><span class="ttl"><strong>AGOA COMPTA</strong></span></div>';
   let h,p,btns='',extra='';
   if(a==='checking'){h='Démarrage…';p='Chargement des réglages.'}
-  else if(a==='denied'){h='Accès refusé';p=esc(S.authMsg||'Ce compte n\'est pas autorisé.');btns='<button class="btn primary" data-act="login">Réessayer</button>'}
-  else if(g.configured){h='Connexion';p='Accès réservé à l\'agence. Identifiez-vous avec votre compte Google professionnel (@'+esc(g.domain)+').'+(S.authMsg?'<br><b style="color:var(--bad)">'+esc(S.authMsg)+'</b>':'');btns='<button class="btn primary" data-act="login">Continuer avec Google</button>'+(c.localMode?'<button class="btn" data-act="local">Entrer en mode local</button>':'')}
-  else{h='Connexion Google à configurer';p='La connexion Google n\'est pas encore configurée sur ce poste. Renseignez les identifiants ci-dessous, ou entrez en mode local.';extra=googleForm(g);btns=c.localMode?'<button class="btn" data-act="local">Entrer en mode local</button>':''}
+  else if(a==='denied'){h='Accès refusé';p=esc(S.authMsg||'Ce compte n\'est pas autorisé.');btns='<button class="btn primary" data-act="login">Se connecter avec un autre compte</button>'}
+  else if(g.configured){h='Connexion';p='Pour utiliser AGOA COMPTA, identifiez-vous avec le compte Google <b>'+esc(mail)+'</b>. Un navigateur va s\'ouvrir.'+(S.authMsg?'<br><b style="color:var(--bad)">'+esc(S.authMsg)+'</b>':'');btns='<button class="btn primary" data-act="login">Continuer avec Google</button>'}
+  else{h='Connexion Google à configurer';p='Le logiciel ne se lance qu\'après une connexion Google avec <b>'+esc(mail)+'</b>. Renseignez une fois l\'identifiant client Google (application de bureau) de l\'agence.';extra=googleForm(g)}
   return '<div class="win">'+tb+'<div class="gate"><div class="card"><span class="logo" aria-hidden="true">CPT</span><h1>'+h+'</h1><p>'+p+'</p>'+extra+(btns?'<div class="ed-act">'+btns+'</div>':'')+'</div></div></div>';
 }
 async function start(){
@@ -355,8 +355,11 @@ async function start(){
   else{S.auth='needs';render()}
 }
 async function enter(){
+  const p=await A.openFile.pending();
+  if(p){S.soc=p.soc;S.period[p.soc]=p.period}
   await load();render();refreshInbox();
 }
+A.openFile.onOpen(async p=>{if(S.auth==='ok'&&p)await switchTo(p.soc,p.period)});
 async function refreshInbox(){
   try{const r=await A.inbox.list();S.inbox=r.count;const b=$('#scanbtn');if(b&&!S.busy)b.textContent=S.inbox?'Lire les '+S.inbox+' relevé'+(S.inbox>1?'s':'')+' à traiter':'Chercher les nouveaux relevés'}catch(e){/* ignore */}
 }
@@ -395,10 +398,9 @@ root.addEventListener('click',async e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=b.dataset.id,v=b.dataset.v;
   if(a==='login'){S.authMsg='';const r=await A.auth.login();if(r.ok){S.me=r.user;S.auth='ok';await enter()}else{S.auth=r.denied?'denied':'needs';S.authMsg=r.message||'';render()}return}
-  if(a==='local'){const r=await A.auth.local();if(r.ok){S.me=r.user;S.auth='ok';await enter()}return}
   if(a==='logout'){await flushSave();await A.auth.logout();S.auth='needs';S.me=null;S.data={};render();return}
   if(a==='savegoogle'){
-    const g={clientId:$('[data-f=gid]').value.trim(),domain:$('[data-f=gdomain]').value.trim()||'remithollet.fr'},sec=$('[data-f=gsecret]').value;if(sec)g.clientSecret=sec;
+    const g={clientId:$('[data-f=gid]').value.trim()},sec=$('[data-f=gsecret]').value;if(sec)g.clientSecret=sec;
     S.cfg=await A.cfg.setGoogle(g);toast('Réglages Google enregistrés.');render();return;
   }
   if(a==='chooseroot'){const r=await A.cfg.chooseRoot();if(r&&r.cfg){S.cfg=r.cfg;S.data={};await load();render();refreshInbox();toast('Dossier enregistré.')}return}

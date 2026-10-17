@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+const ALLOWED_EMAIL = 'agence@remithollet.fr';
 const SUB = path.join('08 -THOMAS', '003-COMPTABILITE');
 
 function readJson(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; } }
@@ -28,10 +29,15 @@ function detectComptaRoot(env = process.env, home = os.homedir()) {
 }
 
 class Config {
-  constructor(file) { this.file = file; this.data = Object.assign({ root: null, google: { clientId: '', clientSecret: '', domain: 'remithollet.fr' }, localMode: true }, readJson(file) || {}); }
+  constructor(file, defaults) {
+    this.file = file;
+    const saved = readJson(file) || {}, d = defaults || {};
+    this.data = Object.assign({ root: null }, saved, { google: Object.assign({ clientId: '', clientSecret: '' }, d, saved.google || {}, { allowedEmail: ALLOWED_EMAIL }) });
+    delete this.data.localMode;
+  }
   get() { return this.data; }
   set(patch) {
-    this.data = Object.assign({}, this.data, patch, { google: Object.assign({}, this.data.google, patch.google || {}) });
+    this.data = Object.assign({}, this.data, patch, { google: Object.assign({}, this.data.google, patch.google || {}, { allowedEmail: ALLOWED_EMAIL }) });
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     fs.writeFileSync(this.file, JSON.stringify(this.data, null, 2));
     return this.data;
@@ -39,4 +45,4 @@ class Config {
   /** Dossier 003-COMPTABILITE à utiliser (réglage, sinon détection). */
   comptaRoot() { return this.data.root && exists(this.data.root) ? this.data.root : detectComptaRoot(); }
 }
-module.exports = { Config, detectComptaRoot, SUB };
+module.exports = { Config, detectComptaRoot, SUB, ALLOWED_EMAIL };

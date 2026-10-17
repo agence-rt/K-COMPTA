@@ -88,3 +88,18 @@ test('trimestre FAURIEL49 : trois relevés mensuels', async () => {
   assert.strictEqual(C.acct(d, 'sg').ecart, 0);
   assert.strictEqual(C.periodIdOf('sci', '2026-08-05'), 'T3-2026');
 });
+
+test('fichier .compta : enregistrement, relecture, ancien format, fichier étranger', () => {
+  const { readComptaFile } = require('../src/main/store');
+  const root = tmp(), st = new Store(root), d = C.blankPeriod('archi', '2026-09'); d.report = 12.5;
+  st.save('archi', '2026-09', d);
+  const f = path.join(st.periodDir('archi', '2026-09'), 'periode.compta');
+  assert.ok(fs.existsSync(f));
+  assert.deepStrictEqual(readComptaFile(f), { soc: 'archi', period: '2026-09' });
+  assert.strictEqual(st.load('archi', '2026-09').report, 12.5);
+  fs.writeFileSync(path.join(tmp(), 'x.compta'), '{"app":"autre"}');
+  assert.throws(() => readComptaFile(path.join(path.dirname(f), 'releves-absent.compta')));
+  const bad = path.join(tmp(), 'x.compta'); fs.writeFileSync(bad, '{"app":"autre"}'); assert.throws(() => readComptaFile(bad));
+  fs.unlinkSync(f); fs.writeFileSync(path.join(path.dirname(f), 'periode.json'), JSON.stringify(Object.assign(C.blankPeriod('archi', '2026-09'), { report: 7 })));
+  assert.strictEqual(st.load('archi', '2026-09').report, 7);
+});

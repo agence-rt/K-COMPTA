@@ -16,8 +16,9 @@ const assert = require('assert');
   fs.writeFileSync(path.join(st.inboxDir(), 'Extrait de comptes Compte 07391 Eurocompte PRO Confort SARL THOMAS KOCHANSKI ARCHITECTE au 2026-09-30.pdf'), await make('cm', { lines: F.CM, meta: F.meta.CM }));
   fs.writeFileSync(path.join(st.inboxDir(), 'releve_THOMAS_KOCHANSKI_ARCHITECTE_00028011512_30092026.pdf'), await make('sg', { lines: F.SG, meta: F.meta.SG }));
   const just = path.join(tmp, 'facture.pdf'); fs.writeFileSync(just, await make('sg', { lines: [], meta: F.meta.SG }).catch(() => Buffer.from('%PDF-1.4')));
-  const config = new Config(path.join(tmp, 'config.json')); config.set({ root, localMode: true });
+  const config = new Config(path.join(tmp, 'config.json')); config.set({ root, google: { clientId: 'cid' } });
   const auth = new Auth({ getConfig: () => config.get(), openExternal: async () => {} });
+  auth.login = async () => { auth.session = { user: { email: 'agence@remithollet.fr', name: 'Agence' } }; return auth.current(); };   // le vrai flux est testé dans auth.test.js
   const api = createApi({ config, auth, version: 'test', openPath: async () => {}, dialogs: { folder: async () => root, files: async (t) => [just] } });
 
   const br = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
@@ -26,9 +27,9 @@ const assert = require('assert');
   await page.exposeFunction('__call', async (ch, args) => { try { return { v: await api[ch](...args) }; } catch (e) { return { e: e.message }; } });
   await page.addInitScript(() => {
     const c = ch => async (...a) => { const r = await window.__call(ch, a); if (r.e) throw new Error(r.e); return r.v; };
-    window.agoa = {
+    window.agoa = { openFile: { pending: c('app:pendingOpen'), onOpen: () => {} },
       cfg: { get: c('cfg:get'), setGoogle: c('cfg:setGoogle'), chooseRoot: c('cfg:chooseRoot') },
-      auth: { session: c('auth:session'), login: c('auth:login'), local: c('auth:local'), logout: c('auth:logout') },
+      auth: { session: c('auth:session'), login: c('auth:login'), logout: c('auth:logout') },
       period: { load: c('period:load'), save: c('period:save'), saveSync: () => true },
       inbox: { list: c('inbox:list'), importAll: c('inbox:importAll') }, statement: { pick: c('statement:pick') },
       doc: { pick: c('doc:pick'), open: c('doc:open') }, folder: { open: c('folder:open') }, export: { run: c('export:run') } };
@@ -36,8 +37,9 @@ const assert = require('assert');
   await page.goto('file://' + path.resolve(__dirname, '../src/renderer/index.html'));
   const shot = n => page.screenshot({ path: path.join(process.env.SHOTS || tmp, n + '.png') });
 
-  await page.waitForSelector('text=Entrer en mode local'); await shot('1-gate');
-  await page.click('[data-act=local]');
+  await page.waitForSelector('text=Continuer avec Google'); await shot('1-gate');
+  assert.ok(!(await page.content()).includes('mode local'));
+  await page.click('[data-act=login]');
   await page.waitForSelector('.mhead');
   // période : septembre 2026
   await page.selectOption('[data-f=year]', '2026'); await page.selectOption('[data-f=period]', '2026-09');
@@ -61,6 +63,7 @@ const assert = require('assert');
   const d = st.load('archi', '2026-09'); const l = d.lines.find(x => x.label.includes('ADOBE'));
   console.log('ligne ADOBE enregistrée:', l.type, !!l.doc, l.vent.length);
   assert.strictEqual(l.type, 'dep'); assert.ok(l.doc);
+  assert.ok(fs.existsSync(path.join(st.periodDir('archi', '2026-09'), 'periode.compta')));
   const ex = fs.readdirSync(path.join(st.periodDir('archi', '2026-09'), 'exports')); console.log(ex); assert.strictEqual(ex.length, 2);
   // rechargement : l'état revient du disque
   await page.reload(); await page.waitForSelector('tr.row'); assert.strictEqual(await page.locator('tr.row').count(), 50); assert.ok(await page.locator('.chip .fn').count() === 1);

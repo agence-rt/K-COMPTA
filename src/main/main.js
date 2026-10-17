@@ -5,27 +5,30 @@ const fs = require('fs');
 const { Config } = require('./config');
 const { Auth } = require('./auth');
 const { createApi } = require('./api');
+const { readComptaFile } = require('./store');
 const { checkAndInstall } = require('./updater');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
 let win;
+let pendingOpen = null;
+function fromArgs(argv) { return (argv || []).find(a => /\.compta$/i.test(a) && fs.existsSync(a)); }
+function openCompta(file) {
+  try { pendingOpen = readComptaFile(file); } catch (e) { dialog.showErrorBox('AGOA COMPTA', e.message); return; }
+  if (win && !win.isDestroyed()) { win.webContents.send('compta:open', pendingOpen); if (win.isMinimized()) win.restore(); win.focus(); }
+}
+
 function boot() {
   const userData = app.getPath('userData');
-  const config = new Config(path.join(userData, 'config.json'));
-  const sessFile = path.join(userData, 'session.json');
-  let saved = null; try { saved = JSON.parse(fs.readFileSync(sessFile, 'utf8')); } catch (e) { /* aucune session */ }
-  const auth = new Auth({
-    getConfig: () => config.get(),
-    openExternal: url => shell.openExternal(url),
-    session: saved,
-    onSession: s => { try { s ? fs.writeFileSync(sessFile, JSON.stringify(s)) : fs.rmSync(sessFile, { force: true }); } catch (e) { /* ignore */ } }
-  });
+  let defaults = {}; try { defaults = require('./google.json'); } catch (e) { /* identifiants Google non embarqués : à saisir au premier lancement */ }
+  const config = new Config(path.join(userData, 'config.json'), defaults);
+  // La connexion Google est exigée à chaque lancement : aucune session n'est conservée sur le disque.
+  const auth = new Auth({ getConfig: () => config.get(), openExternal: url => shell.openExternal(url) });
   const dialogs = {
     folder: async title => { const r = await dialog.showOpenDialog(win, { title, properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; },
     files: async (title, filters, multi) => { const r = await dialog.showOpenDialog(win, { title, filters, properties: multi ? ['openFile', 'multiSelections'] : ['openFile'] }); return r.canceled ? [] : r.filePaths; }
   };
-  const api = createApi({ config, auth, dialogs, version: app.getVersion(), openPath: async p => { const e = await shell.openPath(p); if (e) throw new Error(e); } });
+  const api = createApi({ config, auth, dialogs, pending: { take: () => { const p = pendingOpen; pendingOpen = null; return p; } }, version: app.getVersion(), openPath: async p => { const e = await shell.openPath(p); if (e) throw new Error(e); } });
   Object.keys(api).forEach(ch => ipcMain.handle(ch, async (ev, ...args) => api[ch](...args)));
   ipcMain.on('period:saveSync', (ev, soc, period, data) => { try { api['period:save'](soc, period, data); ev.returnValue = true; } catch (e) { ev.returnValue = false; } });
 }
@@ -46,7 +49,10 @@ function splash() {
   return { set, close: () => { if (!w.isDestroyed()) w.close(); } };
 }
 
+app.on('open-file', (e, f) => { e.preventDefault(); openCompta(f); });
+
 app.whenReady().then(async () => {
+  { const f = fromArgs(process.argv.slice(1)); if (f) { try { pendingOpen = readComptaFile(f); } catch (e) { dialog.showErrorBox('AGOA COMPTA', e.message); } } }
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(false));
   if (app.isPackaged || process.env.AGOA_FORCE_UPDATE) {
     const sp = splash();
@@ -58,5 +64,5 @@ app.whenReady().then(async () => {
   boot(); createWindow();
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 });
-app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+app.on('second-instance', (e, argv) => { const f = fromArgs(argv); if (f) openCompta(f); if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 app.on('window-all-closed', () => app.quit());

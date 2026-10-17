@@ -4,7 +4,7 @@
   --bg:#F2F1F0; --surface:#FFFFFF; --surface2:#F8F7F6; --ink:#201C1C; --muted:#675F5F; --line:#DDD8D6;
   --accent:#B3141C; --accent-ink:#FFFFFF; --accent-soft:#F6E3E3;
   --ok:#1B7048; --ok-soft:#E1F1E8; --warn:#8F5A00; --warn-soft:#FBEED3; --bad:#B42318; --bad-soft:#FBE4E1;
-  --font:'Segoe UI',system-ui,'Segoe UI',sans-serif; --mono:Consolas,ui-monospace,Consolas,monospace;
+  --font:Arial,Helvetica,sans-serif; --mono:Arial,Helvetica,sans-serif;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#151313; --surface:#1E1B1B; --surface2:#262222; --ink:#EEE9E8; --muted:#A39B9A; --line:#383232;
@@ -196,3 +196,16 @@ body{padding:0!important}
 .app{flex:1;min-height:0}
 .gate{flex:1}
 .gform{width:100%}.gform input{width:100%;box-sizing:border-box}
+
+/* Nature : dépense rouge, recette verte, hors TVA orange */
+.seg button[data-v=dep]{color:var(--bad);background:var(--bad-soft)}
+.seg button[data-v=rec]{color:var(--ok);background:var(--ok-soft)}
+.seg button[data-v=hors]{color:#B45309;background:#FDEBD3}
+.seg button[data-v=dep][aria-pressed=true]{background:#C62828;color:#fff}
+.seg button[data-v=rec][aria-pressed=true]{background:#2E7D32;color:#fff}
+.seg button[data-v=hors][aria-pressed=true]{background:#E67E22;color:#fff}
+@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .seg button[data-v=hors]{background:#3a2a12;color:#F0A04B}}
+/* chiffres en écriture comptable */
+input.m,.mono,.big,.form .v b,.form .v small{font-variant-numeric:tabular-nums;letter-spacing:0}
+input.m{width:124px}
+.seg button{padding:5px 7px!important;font-size:11.5px!important}

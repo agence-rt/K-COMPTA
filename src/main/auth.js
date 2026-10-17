@@ -1,5 +1,5 @@
 /* Connexion Google (OAuth 2.0 pour application de bureau : navigateur système + retour sur 127.0.0.1 + PKCE).
-   Seules les adresses du domaine autorisé sont acceptées. Un mode local est proposé tant que Google n'est pas configuré. */
+   Obligatoire à chaque lancement : seul le compte autorisé (agence@remithollet.fr) donne accès au logiciel. */
 'use strict';
 const http = require('http');
 const crypto = require('crypto');
@@ -12,12 +12,12 @@ function decodeJwt(t) {
   try { return JSON.parse(Buffer.from(String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')); } catch (e) { return null; }
 }
 
-/** Vérifie qu'une identité Google est autorisée. Rend {ok, user} ou {ok:false, denied, message}. */
-function checkIdentity(claims, domain) {
+/** Vérifie qu'une identité Google est celle du compte autorisé (adresse exacte). */
+function checkIdentity(claims, allowed) {
   if (!claims || !claims.email) return { ok: false, message: 'Identité Google illisible.' };
-  const email = String(claims.email).toLowerCase(), dom = String(domain || '').toLowerCase().replace(/^@/, '');
+  const email = String(claims.email).toLowerCase(), want = String(allowed || '').toLowerCase();
   if (claims.email_verified === false) return { ok: false, denied: true, message: 'Adresse e-mail non vérifiée par Google.' };
-  if (dom && !email.endsWith('@' + dom)) return { ok: false, denied: true, message: 'Le compte ' + email + ' n\'appartient pas au domaine autorisé (@' + dom + ').' };
+  if (!want || email !== want) return { ok: false, denied: true, message: 'Le compte ' + email + ' n\'est pas autorisé. Connectez-vous avec ' + want + '.' };
   return { ok: true, user: { email, name: claims.name || email, picture: claims.picture || null } };
 }
 
@@ -35,13 +35,6 @@ class Auth {
   }
   current() { return this.session ? { ok: true, user: this.session.user } : { ok: false }; }
   logout() { this.session = null; this.onSession(null); }
-  local() {
-    const c = this.getConfig();
-    if (!c.localMode) return { ok: false, message: 'Mode local désactivé.' };
-    this.session = { user: { email: '', name: 'Utilisateur local', local: true } }; this.onSession(this.session);
-    return this.current();
-  }
-
   async login() {
     const c = this.getConfig(), g = c.google || {};
     if (!g.clientId) return { ok: false, message: 'Connexion Google non configurée.' };
@@ -62,7 +55,7 @@ class Auth {
       server.listen(0, '127.0.0.1', () => {
         this.redirect = 'http://127.0.0.1:' + server.address().port + '/cb';
         const q = new URLSearchParams({ client_id: g.clientId, redirect_uri: this.redirect, response_type: 'code', scope: 'openid email profile', code_challenge: challenge, code_challenge_method: 'S256', state, access_type: 'online', prompt: 'select_account' });
-        if (g.domain) q.set('hd', g.domain);
+        q.set('login_hint', g.allowedEmail || '');
         Promise.resolve(this.openExternal(this.auth + '?' + q)).catch(reject);
       });
     }).catch(e => ({ error: e })).finally(() => { try { server && server.close(); } catch (e) { /* ignore */ } });
@@ -77,8 +70,7 @@ class Auth {
       if (!r.ok || !tok.id_token) return { ok: false, message: 'Google a refusé la connexion' + (tok && tok.error_description ? ' : ' + tok.error_description : '.') };
     } catch (e) { return { ok: false, message: 'Google injoignable : ' + e.message }; }
     const claims = decodeJwt(tok.id_token);
-    if (claims && g.domain && claims.hd && String(claims.hd).toLowerCase() !== String(g.domain).toLowerCase().replace(/^@/, '')) return { ok: false, denied: true, message: 'Domaine non autorisé : ' + claims.hd };
-    const chk = checkIdentity(claims, g.domain);
+    const chk = checkIdentity(claims, g.allowedEmail);
     if (!chk.ok) return chk;
     this.session = { user: chk.user }; this.onSession(this.session);
     return { ok: true, user: chk.user };

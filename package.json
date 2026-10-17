@@ -61,6 +61,14 @@
         "repo": "K-COMPTA",
         "releaseType": "release"
       }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "compta",
+        "name": "Fichier AGOA COMPTA",
+        "description": "Comptabilité AGOA COMPTA",
+        "role": "Editor"
+      }
     ]
   }
 }

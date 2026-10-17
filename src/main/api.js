@@ -8,13 +8,13 @@ const { Store } = require('./store');
 const { buildXlsx } = require('../core/export/xlsx');
 const { buildPdf } = require('../core/export/pdf');
 
-function createApi({ config, auth, dialogs, openPath, version }) {
+function createApi({ config, auth, dialogs, openPath, version, pending }) {
   const store = () => { const r = config.comptaRoot(); if (!r) return null; const s = new Store(r); s.ensure(); return s; };
   const need = () => { const s = store(); if (!s) throw new Error('Dossier Dropbox introuvable : choisissez-le dans Réglages.'); return s; };
   const publicCfg = () => {
     const c = config.get(), g = c.google || {}, root = config.comptaRoot();
-    return { root, rootSource: c.root && root === c.root ? 'config' : 'auto', localMode: !!c.localMode, version: version || '',
-      google: { clientId: g.clientId || '', hasSecret: !!g.clientSecret, domain: g.domain || 'remithollet.fr', configured: !!g.clientId } };
+    return { root, rootSource: c.root && root === c.root ? 'config' : 'auto', version: version || '',
+      google: { clientId: g.clientId || '', hasSecret: !!g.clientSecret, email: g.allowedEmail, configured: !!g.clientId } };
   };
   const guard = () => { if (!auth.current().ok) throw new Error('Non connecté.'); };
 
@@ -22,7 +22,7 @@ function createApi({ config, auth, dialogs, openPath, version }) {
     'cfg:get': () => publicCfg(),
     'cfg:setGoogle': g => {
       const cur = config.get().google || {};
-      config.set({ google: { clientId: String(g.clientId || '').trim(), domain: String(g.domain || 'remithollet.fr').trim().replace(/^@/, ''), clientSecret: g.clientSecret != null ? String(g.clientSecret).trim() : cur.clientSecret || '' } });
+      config.set({ google: { clientId: String(g.clientId || '').trim(), clientSecret: g.clientSecret != null ? String(g.clientSecret).trim() : cur.clientSecret || '' } });
       return publicCfg();
     },
     'cfg:chooseRoot': async () => {
@@ -30,9 +30,9 @@ function createApi({ config, auth, dialogs, openPath, version }) {
       if (!p) return null;
       config.set({ root: p }); return { cfg: publicCfg() };
     },
+    'app:pendingOpen': () => { guard(); const p = pending ? pending.take() : null; return p; },
     'auth:session': () => auth.current(),
     'auth:login': () => auth.login(),
-    'auth:local': () => auth.local(),
     'auth:logout': () => { auth.logout(); return true; },
 
     'period:load': (soc, period) => { guard(); const s = store(); return s ? s.load(soc, period) : C.blankPeriod(soc, period); },

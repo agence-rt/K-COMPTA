@@ -18,6 +18,13 @@ jobs:
       - name: Numéro de version (0.1.N)
         run: npm version 0.1.${{ github.run_number }} --no-git-tag-version
         shell: bash
+      - name: Identifiants Google (secrets GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET, facultatifs)
+        shell: bash
+        env:
+          GID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GSEC: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        run: |
+          if [ -n "$GID" ]; then node -e "require('fs').writeFileSync('src/main/google.json', JSON.stringify({clientId: process.env.GID, clientSecret: process.env.GSEC || ''}))"; fi
       - name: Construire l'installateur
         run: npx electron-builder --win --x64 --publish never
       - name: Publier la release (lue par la mise à jour automatique)

@@ -1,5 +1,5 @@
 /* Données de comptabilité rangées dans AGOA-COMPTA (dossier Dropbox synchronisé) :
-   AGOA-COMPTA/<société>/<année>/<période>/{periode.json, releves/, justificatifs/, exports/}
+   AGOA-COMPTA/<société>/<année>/<période>/{periode.compta, releves/, justificatifs/, exports/}
    Les relevés à traiter sont déposés dans AGOA-COMPTA/A-TRAITER/. */
 'use strict';
 const fs = require('fs');
@@ -16,6 +16,17 @@ function uniqueName(dir, name) {
   return n;
 }
 
+/** Format du fichier .compta : propre à AGOA COMPTA, il porte la société et la période pour pouvoir être rouvert d'un double-clic. */
+const FORMAT = 'AGOA-COMPTA';
+const wrap = d => ({ app: FORMAT, format: 1, societe: d.soc, periode: d.period, data: d });
+function unwrap(j) { if (j && j.app === FORMAT && j.data) return j.data; if (j && j.app) throw new Error('Fichier .compta d\'une autre application'); return j; }
+/** Lit un fichier .compta et rend { soc, period } (ou lève une erreur si ce n'est pas un fichier AGOA COMPTA). */
+function readComptaFile(file) {
+  const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (!j || j.app !== FORMAT || !C.SOC[j.societe] || !C.periodInfo(j.societe, j.periode)) throw new Error('Ce fichier .compta n\'est pas un fichier AGOA COMPTA valide.');
+  return { soc: j.societe, period: j.periode };
+}
+
 class Store {
   constructor(comptaRoot) { this.base = path.join(comptaRoot, 'AGOA-COMPTA'); }
   inboxDir() { return path.join(this.base, 'A-TRAITER'); }
@@ -25,16 +36,19 @@ class Store {
   }
   ensure() { mkdir(this.inboxDir()); }
 
+  composeFile(soc, periodId) { return path.join(this.periodDir(soc, periodId), 'periode.compta'); }
   load(soc, periodId) {
-    const f = path.join(this.periodDir(soc, periodId), 'periode.json');
-    try { return Object.assign(C.blankPeriod(soc, periodId), JSON.parse(fs.readFileSync(f, 'utf8'))); }
-    catch (e) { return C.blankPeriod(soc, periodId); }
+    const dir = this.periodDir(soc, periodId);
+    for (const n of ['periode.compta', 'periode.json']) {          // periode.json : ancien format, relu puis réécrit en .compta
+      try { return Object.assign(C.blankPeriod(soc, periodId), unwrap(JSON.parse(fs.readFileSync(path.join(dir, n), 'utf8')))); } catch (e) { /* suivant */ }
+    }
+    return C.blankPeriod(soc, periodId);
   }
   save(soc, periodId, data) {
     data.updated = new Date().toISOString();
-    writeAtomic(path.join(this.periodDir(soc, periodId), 'periode.json'), JSON.stringify(data, null, 1));
+    writeAtomic(this.composeFile(soc, periodId), JSON.stringify(wrap(data), null, 1));
   }
-  has(soc, periodId) { return fs.existsSync(path.join(this.periodDir(soc, periodId), 'periode.json')); }
+  has(soc, periodId) { return fs.existsSync(this.composeFile(soc, periodId)) || fs.existsSync(path.join(this.periodDir(soc, periodId), 'periode.json')); }
 
   absPath(soc, periodId, rel) {
     const dir = this.periodDir(soc, periodId), p = path.resolve(dir, rel);
@@ -84,4 +98,4 @@ class Store {
     return out;
   }
 }
-module.exports = { Store, uniqueName };
+module.exports = { Store, uniqueName, readComptaFile, FORMAT };

@@ -6,7 +6,7 @@ const C = require('../calc');
 const { SOC, fmt, fmt0, frFull, TYPE_SHORT } = C;
 
 const wa = s => String(s == null ? '' : s).replace(/[  ]/g, ' ').replace(/[−–—]/g, '-').replace(/[‘’]/g, '\'').replace(/[“”]/g, '"')
-  .split('').map(ch => { const c = ch.charCodeAt(0); return c < 32 ? ' ' : (c <= 126 || (c >= 160 && c <= 255)) ? ch : (c === 0x20ac ? 'EUR' : '?'); }).join('');
+  .split('').map(ch => { const c = ch.charCodeAt(0); return c < 32 ? ' ' : (c <= 126 || (c >= 160 && c <= 255)) ? ch : (c === 0x20ac ? ch : '?'); }).join('');
 
 /** readDoc(ligne) rend le contenu du justificatif (Buffer) ou null. */
 async function buildPdf(soc, periodId, data, readDoc) {
@@ -38,17 +38,17 @@ async function buildPdf(soc, periodId, data, readDoc) {
   T(s.name, 40, 730, 15, fb); T(p.label + ' · déclaration ' + s.freqLabel.toLowerCase() + (s.siren ? ' · SIREN ' + s.siren : ''), 40, 712, 10.5, f, MUT);
   pg.drawLine({ start: { x: 40, y: 696 }, end: { x: 555, y: 696 }, thickness: .7, color: LINE });
   T('Résumé de la TVA', 40, 672, 12, fb);
-  [['TVA brute due (ligne 16)', D.L16], ['TVA déductible (ligne 23)', D.L23]].forEach((r, i) => { T(r[0], 40, 650 - i * 18, 10.5); TR(fmt0(r[1]) + ' EUR', 555, 650 - i * 18, 10.5, fb); });
+  [['TVA brute due (ligne 16)', D.L16], ['TVA déductible (ligne 23)', D.L23]].forEach((r, i) => { T(r[0], 40, 650 - i * 18, 10.5); TR(fmt0(r[1]) + '\u00a0€', 555, 650 - i * 18, 10.5, fb); });
   const res = D.TD > 0 ? 'TVA à payer (ligne 32)' : D.TD < 0 ? 'Crédit de TVA (ligne 25)' : 'Aucune TVA à payer';
   pg.drawRectangle({ x: 40, y: 592, width: 515, height: 26, color: rgb(0.97, 0.94, 0.94) });
-  T(res, 48, 601, 11, fb); TR(fmt0(Math.abs(D.TD)) + ' EUR', 547, 601, 12, fb, RED);
+  T(res, 48, 601, 11, fb); TR(fmt0(Math.abs(D.TD)) + '\u00a0€', 547, 601, 12, fb, RED);
   T('Montants déclarés, arrondis à l\'euro.', 40, 574, 8.5, f, MUT);
   T('Contenu', 40, 544, 12, fb);
   T(pieces.length + ' justificatif' + (pieces.length > 1 ? 's' : '') + ' · ' + model.flat.length + ' ligne' + (model.flat.length > 1 ? 's' : '') + ' · ordre : compte bancaire, dépenses, recettes, hors TVA, puis date', 40, 526, 9.5, f, MUT);
   if (missing.length) {
     T('Justificatifs manquants (' + missing.length + ')', 40, 494, 12, fb, RED);
     let y = 476;
-    missing.slice(0, 22).forEach(it => { T(it.n + '  ' + frFull(it.l.date) + '  ' + fit(it.l.label || '(sans libellé)', f, 9, 300) + '  ' + bshort(it) + '  ' + fmt(C.lineTTC(it.l)) + ' EUR', 40, y, 9); y -= 14; });
+    missing.slice(0, 22).forEach(it => { T(it.n + '  ' + frFull(it.l.date) + '  ' + fit(it.l.label || '(sans libellé)', f, 9, 300) + '  ' + bshort(it) + '  ' + fmt(C.lineTTC(it.l)) + '\u00a0€', 40, y, 9); y -= 14; });
     if (missing.length > 22) T('... et ' + (missing.length - 22) + ' autres (voir l\'export Excel).', 40, y, 9, f, MUT);
   }
   T('Édité le ' + new Date().toLocaleDateString('fr-FR') + ' par AGOA COMPTA', 40, 40, 8.5, f, MUT);
@@ -62,7 +62,7 @@ async function buildPdf(soc, periodId, data, readDoc) {
     pieces.slice(ip * ROWS, (ip + 1) * ROWS).forEach(pc => {
       const it = pc.it, l = it.l;
       T(String(it.n), 40, y, 9); T(frFull(l.date), 66, y, 9); T(fit(l.label || '(sans libellé)', f, 9, 200), 120, y, 9);
-      T(TYPE_SHORT[it.type] + ' · ' + bshort(it), 330, y, 9); TR((l.debit > 0 ? '-' : '+') + fmt(C.lineTTC(l)), 515, y, 9);
+      T(TYPE_SHORT[it.type] + ' · ' + bshort(it), 330, y, 9); TR((l.debit > 0 ? '-' : '+') + fmt(C.lineTTC(l)) + '\u00a0€', 515, y, 9);
       TR(pc.src ? String(pc.start) + (pc.pages > 1 ? '-' + (pc.start + pc.pages - 1) : '') : 'n/i', 555, y, 9, fb, pc.src ? INK : RED);
       y -= 17;
     });
