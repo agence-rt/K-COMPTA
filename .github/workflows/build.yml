@@ -18,7 +18,12 @@ jobs:
       - name: Numéro de version (0.1.N)
         run: npm version 0.1.${{ github.run_number }} --no-git-tag-version
         shell: bash
-      - name: Construire et publier la release (lue par la mise à jour automatique)
-        run: npx electron-builder --win --x64 --publish always
+      - name: Construire l'installateur
+        run: npx electron-builder --win --x64 --publish never
+      - name: Publier la release (lue par la mise à jour automatique)
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V=$(node -p "require('./package.json').version")
+          gh release create "v$V" "dist/AGOA-COMPTA-Setup-$V.exe" "dist/AGOA-COMPTA-Setup-$V.exe.blockmap" dist/latest.yml --title "$V" --notes "Version $V" --latest
