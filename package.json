@@ -58,7 +58,8 @@
       {
         "provider": "github",
         "owner": "agence-rt",
-        "repo": "K-COMPTA"
+        "repo": "K-COMPTA",
+        "releaseType": "release"
       }
     ]
   }
