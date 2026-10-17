@@ -1,0 +1,385 @@
+{
+ "CM": [
+  {
+   "day": "01",
+   "label": "VIR SEPA PERSONNEL",
+   "amount": "1750.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "02",
+   "label": "PAIEMENT CB GOOGLE CLOUD V6Z",
+   "amount": "0.01",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "03",
+   "label": "VIR INST SALAIRE P. NOM1",
+   "amount": "1649.99",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "03",
+   "label": "VIR INST SALAIRE P. NOM2",
+   "amount": "2115.29",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "03",
+   "label": "VIR INST SALAIRE P. NOM3",
+   "amount": "2373.82",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "03",
+   "label": "VIR INST SALAIRE P. NOM4",
+   "amount": "2466.10",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "03",
+   "label": "VIR INST SALAIRE P. NOM5",
+   "amount": "2247.03",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "04",
+   "label": "PRLV SEPA AMAZON PAYMENTS EUROP",
+   "amount": "15.82",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "04",
+   "label": "PRLV SEPA AMAZON PAYMENTS EUROP",
+   "amount": "39.13",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "04",
+   "label": "PRLV SEPA ORANGE SA",
+   "amount": "39.60",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "07",
+   "label": "PRLV SEPA BAYERISCHE MOTOREN WE",
+   "amount": "549.93",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "07",
+   "label": "PRLV SEPA ALLIANZ I A R D ALLIA",
+   "amount": "59.38",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "07",
+   "label": "PRLV SEPA VERISURE",
+   "amount": "52.77",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "07",
+   "label": "PRLV SEPA VERISURE",
+   "amount": "32.45",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "07",
+   "label": "VIR 57 RUE MICHELET",
+   "amount": "360.00",
+   "dir": "C",
+   "hint": null
+  },
+  {
+   "day": "07",
+   "label": "PAIEMENT CB DROPBOX SIGN",
+   "amount": "192.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "09",
+   "label": "PRLV SEPA FREE MOBILE",
+   "amount": "2.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "08",
+   "label": "REM CHQ REF07328A06",
+   "amount": "5280.00",
+   "dir": "C",
+   "hint": null
+  },
+  {
+   "day": "08",
+   "label": "REM CHQ REF07328A06",
+   "amount": "4400.00",
+   "dir": "C",
+   "hint": null
+  },
+  {
+   "day": "09",
+   "label": "VIR INST SELARL REMI THOLLET AR",
+   "amount": "29700.00",
+   "dir": "C",
+   "hint": null
+  },
+  {
+   "day": "09",
+   "label": "VIR INST FORVIS MAZARS",
+   "amount": "510.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "09",
+   "label": "VIR INST VALET NETTOYAGE",
+   "amount": "150.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "09",
+   "label": "PAIEMENT CB EASYPARK.FR",
+   "amount": "1.38",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "09",
+   "label": "PAIEMENT CB AMAZON PRIME FR",
+   "amount": "69.90",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "10",
+   "label": "FACT SGT26073910006038",
+   "amount": "27.16",
+   "dir": "D",
+   "hint": {
+    "tva": "1.68",
+    "rate": 20,
+    "text": "Relevé : dont TVA 1,68 €"
+   }
+  },
+  {
+   "day": "10",
+   "label": "PAIEMENT PSC SARL MACASMAD",
+   "amount": "52.40",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "14",
+   "label": "VIR INST F49",
+   "amount": "2500.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "15",
+   "label": "PRLV SEPA AMAZON PAYMENTS EUROP",
+   "amount": "52.46",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "15",
+   "label": "PRLV SEPA AMAZON PAYMENTS EUROP",
+   "amount": "124.01",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "15",
+   "label": "PRLV SEPA AMAZON PAYMENTS EUROP",
+   "amount": "200.45",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "14",
+   "label": "PAIEMENT CB AMAZON EU SARL",
+   "amount": "14.11",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "14",
+   "label": "PAIEMENT CB SNCF-VOYAGEURS",
+   "amount": "192.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "15",
+   "label": "PRLV SEPA AMAZON EU SARL, SUCCU",
+   "amount": "11.06",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "16",
+   "label": "PRLV SEPA URSSAF RHONE ALPES",
+   "amount": "5796.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "16",
+   "label": "PAIEMENT CB ACCOR APARTHOTE",
+   "amount": "419.73",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "17",
+   "label": "PAIEMENT CB VISTAPRINT",
+   "amount": "31.73",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "18",
+   "label": "PAIEMENT CB NUVEI",
+   "amount": "720.75",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "21",
+   "label": "PRLV SEPA AGIPI-ADIS",
+   "amount": "116.83",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "21",
+   "label": "VIR INST SELARL REMI THOLLET AR",
+   "amount": "22926.00",
+   "dir": "C",
+   "hint": {
+    "rate": 10,
+    "text": "Relevé : TVA10"
+   }
+  },
+  {
+   "day": "21",
+   "label": "PAIEMENT CB SQSP* DOMAIN",
+   "amount": "12.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "21",
+   "label": "PAIEMENT CB SERVICE NAVIGO",
+   "amount": "25.50",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "22",
+   "label": "VIR SELARL REMI THOLLET AR",
+   "amount": "16911.00",
+   "dir": "C",
+   "hint": {
+    "rate": 20,
+    "text": "Relevé : TVA20"
+   }
+  },
+  {
+   "day": "23",
+   "label": "PRLV SEPA DIR. GENE. DES FINANCES PUBLIQUES",
+   "amount": "260.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "25",
+   "label": "PRLV SEPA ORANGE SA",
+   "amount": "73.20",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "25",
+   "label": "PAIEMENT CB SQSP* WORKSP",
+   "amount": "58.32",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "27",
+   "label": "VIR INST VIR PERSO",
+   "amount": "2000.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "29",
+   "label": "PAIEMENT CB ADOBE",
+   "amount": "314.35",
+   "dir": "D",
+   "hint": null
+  }
+ ],
+ "SG": [
+  {
+   "day": "07",
+   "label": "PRELEVEMENT EUROPEEN GESTION ASSURANCES MRPRO SOGESSUR",
+   "amount": "1113.45",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "10",
+   "label": "VIR PERM POUR FAURIEL49 LOCATION FAURIEL49",
+   "amount": "2500.00",
+   "dir": "D",
+   "hint": null
+  },
+  {
+   "day": "18",
+   "label": "COTISATION MENSUELLE JAZZ PRO",
+   "amount": "44.32",
+   "dir": "D",
+   "hint": {
+    "ht": "11.61",
+    "tva": "2.32",
+    "rate": 20,
+    "text": "Relevé : HT 11,61 € · TVA 20 % 2,32 €"
+   }
+  }
+ ],
+ "meta": {
+  "CM": {
+   "open": "38544.17",
+   "close": "90802.51",
+   "td": "27318.66",
+   "tc": "79577.00"
+  },
+  "SG": {
+   "open": "79970.69",
+   "close": "76312.92",
+   "td": "3657.77",
+   "tc": "0"
+  }
+ }
+}
