@@ -5,6 +5,7 @@ const fs = require('fs');
 const { Config } = require('./config');
 const { Auth } = require('./auth');
 const { createApi } = require('./api');
+const { checkAndInstall } = require('./updater');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -38,8 +39,22 @@ function createWindow() {
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 }
 
-app.whenReady().then(() => {
+function splash() {
+  const w = new BrowserWindow({ width: 380, height: 150, frame: false, resizable: false, alwaysOnTop: true, backgroundColor: '#F2F1F0', webPreferences: { sandbox: true } });
+  const set = t => w.isDestroyed() || w.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<body style="font:15px Segoe UI,sans-serif;margin:0;display:grid;place-items:center;height:100vh;color:#201C1C"><div style="text-align:center"><b style="color:#B3141C">AGOA COMPTA</b><p>' + t + '</p></div>'));
+  set('Démarrage…');
+  return { set, close: () => { if (!w.isDestroyed()) w.close(); } };
+}
+
+app.whenReady().then(async () => {
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(false));
+  if (app.isPackaged || process.env.AGOA_FORCE_UPDATE) {
+    const sp = splash();
+    const { autoUpdater } = require('electron-updater');
+    const updating = await checkAndInstall({ app, autoUpdater, onStatus: t => t && sp.set(t) });
+    if (updating) return;                    // l'installateur prend le relais et relance l'application
+    sp.close();
+  }
   boot(); createWindow();
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
 });

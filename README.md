@@ -14,6 +14,9 @@ Les données sont enregistrées automatiquement dans `periode.json` (dossier de 
 ## Connexion Google
 Réglages → Connexion Google : identifiant et secret client OAuth « application de bureau » (Google Cloud Console), domaine autorisé `remithollet.fr`. Tant que ce n'est pas configuré, un mode local est proposé.
 
+## Installation et mises à jour
+L'installateur place l'application dans `C:\AGOA\COMPTA`. À chaque lancement, elle cherche la dernière version publiée sur GitHub (releases de agence-rt/K-COMPTA), la télécharge, l'installe et se relance ; hors ligne, elle démarre normalement. Chaque push sur `main` publie une nouvelle version (0.1.N) via GitHub Actions.
+
 ## Développement
 ```
 npm install
