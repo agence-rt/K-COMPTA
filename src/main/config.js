@@ -5,6 +5,8 @@ const path = require('path');
 const os = require('os');
 
 const ALLOWED_EMAIL = 'agence@remithollet.fr';
+/** Connexion Google exigée au lancement. Désactivée provisoirement : remettre à true pour la réactiver (tout le code est en place). */
+const REQUIRE_GOOGLE = false;
 const SUB = path.join('08 -THOMAS', '003-COMPTABILITE');
 
 function readJson(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return null; } }
@@ -45,4 +47,4 @@ class Config {
   /** Dossier 003-COMPTABILITE à utiliser (réglage, sinon détection). */
   comptaRoot() { return this.data.root && exists(this.data.root) ? this.data.root : detectComptaRoot(); }
 }
-module.exports = { Config, detectComptaRoot, SUB, ALLOWED_EMAIL };
+module.exports = { Config, detectComptaRoot, SUB, ALLOWED_EMAIL, REQUIRE_GOOGLE };

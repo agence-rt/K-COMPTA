@@ -2,7 +2,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { Config } = require('./config');
+const { Config, REQUIRE_GOOGLE } = require('./config');
 const { Auth } = require('./auth');
 const { createApi } = require('./api');
 const { readComptaFile } = require('./store');
@@ -23,7 +23,7 @@ function boot() {
   let defaults = {}; try { defaults = require('./google.generated.js'); } catch (e) { /* identifiants Google non embarqués : l'écran de connexion l'indique */ }
   const config = new Config(path.join(userData, 'config.json'), defaults);
   // La connexion Google est exigée à chaque lancement : aucune session n'est conservée sur le disque.
-  const auth = new Auth({ getConfig: () => config.get(), openExternal: url => shell.openExternal(url) });
+  const auth = new Auth({ required: REQUIRE_GOOGLE, getConfig: () => config.get(), openExternal: url => shell.openExternal(url) });
   const dialogs = {
     folder: async title => { const r = await dialog.showOpenDialog(win, { title, properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; },
     files: async (title, filters, multi) => { const r = await dialog.showOpenDialog(win, { title, filters, properties: multi ? ['openFile', 'multiSelections'] : ['openFile'] }); return r.canceled ? [] : r.filePaths; }

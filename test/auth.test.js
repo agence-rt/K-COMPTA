@@ -38,3 +38,4 @@ test('compte hors domaine refusé', async () => {
 });
 test('refus de Google', async () => { const { r } = await run({}, 400); assert.equal(r.ok, false); });
 test('pas de contournement : aucune méthode locale', () => { assert.equal(typeof new Auth({ getConfig: () => ({}) }).local, 'undefined'); });
+test('connexion désactivée : accès direct', () => { const a = new Auth({ required: false, getConfig: () => ({}) }); assert.equal(a.current().ok, true); a.logout(); assert.equal(a.current().ok, true); });

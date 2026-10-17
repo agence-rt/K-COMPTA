@@ -30,11 +30,12 @@ class Auth {
     this.auth = (opts.endpoints && opts.endpoints.auth) || AUTH_URL;
     this.token = (opts.endpoints && opts.endpoints.token) || TOKEN_URL;
     this.timeoutMs = opts.timeoutMs || 180000;
-    this.session = opts.session || null;        // {user, local?}
+    this.required = opts.required !== false;     // false : accès sans connexion (désactivation provisoire)
+    this.session = this.required ? (opts.session || null) : { user: { email: '', name: 'Agence' } };
     this.onSession = opts.onSession || (() => {});
   }
   current() { return this.session ? { ok: true, user: this.session.user } : { ok: false }; }
-  logout() { this.session = null; this.onSession(null); }
+  logout() { if (this.required) { this.session = null; this.onSession(null); } }
   async login() {
     const c = this.getConfig(), g = c.google || {};
     if (!g.clientId) return { ok: false, message: 'Connexion Google non configurée.' };

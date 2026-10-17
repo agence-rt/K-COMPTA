@@ -13,7 +13,7 @@ function createApi({ config, auth, dialogs, openPath, version, pending }) {
   const need = () => { const s = store(); if (!s) throw new Error('Dossier Dropbox introuvable : choisissez-le dans Réglages.'); return s; };
   const publicCfg = () => {
     const c = config.get(), g = c.google || {}, root = config.comptaRoot();
-    return { root, rootSource: c.root && root === c.root ? 'config' : 'auto', version: version || '',
+    return { root, rootSource: c.root && root === c.root ? 'config' : 'auto', version: version || '', authRequired: auth.required !== false,
       google: { clientId: g.clientId || '', hasSecret: !!g.clientSecret, email: g.allowedEmail, configured: !!g.clientId } };
   };
   const guard = () => { if (!auth.current().ok) throw new Error('Non connecté.'); };

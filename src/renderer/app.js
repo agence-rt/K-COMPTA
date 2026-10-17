@@ -331,7 +331,7 @@ const _refresh=refresh;
 refresh=function(){_refresh();queueSave()};
 
 /* ---------- connexion ---------- */
-function userChip(){const m=S.me||{};return '<span class="usr"><span>'+esc(m.email||m.name||'')+'</span><button class="lnk" data-act="logout">Se déconnecter</button></span>'}
+function userChip(){const m=S.me||{};return '<span class="usr"><span>'+esc(m.email||'')+'</span>'+((S.cfg||{}).authRequired?'<button class="lnk" data-act="logout">Se déconnecter</button>':'')+'</span>'}
 function gateHTML(){
   const a=S.auth,c=S.cfg||{},g=c.google||{},mail=g.email||'agence@remithollet.fr';
   const tb='<div class="tb"><span class="appico" aria-hidden="true">CPT</span><span class="ttl"><strong>AGOA COMPTA</strong></span></div>';

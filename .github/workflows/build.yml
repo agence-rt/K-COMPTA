@@ -24,7 +24,7 @@ jobs:
           GID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GSEC: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
-          if [ -z "$GID" ] || [ -z "$GSEC" ]; then echo "::error::Secrets GOOGLE_CLIENT_ID et GOOGLE_CLIENT_SECRET manquants (Settings > Secrets and variables > Actions)"; exit 1; fi
+          if [ -z "$GID" ] || [ -z "$GSEC" ]; then echo "::warning::Secrets Google absents"; exit 0; fi
           node -e "require('fs').writeFileSync('src/main/google.generated.js', 'module.exports = ' + JSON.stringify({clientId: process.env.GID, clientSecret: process.env.GSEC}) + ';')"
       - name: Construire l'installateur
         run: npx electron-builder --win --x64 --publish never
