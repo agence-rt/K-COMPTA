@@ -213,3 +213,41 @@ input.cell.m{width:84px;font-size:12px;padding:4px 6px}
 th.num{white-space:nowrap}
 select.rate{width:78px;padding:4px 4px;font-size:12px}
 button.ico.on{color:var(--accent);background:var(--accent-soft)}
+
+/* panneau PDF à droite */
+:root{--vw:38vw}
+#viewer{position:fixed;top:0;right:0;bottom:0;width:var(--vw);background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;z-index:20;box-shadow:-6px 0 18px rgba(0,0,0,.08)}
+#viewer[hidden]{display:none}
+.vgrip{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:col-resize}
+.vgrip:hover{background:var(--accent-soft)}
+.vhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface2)}
+.vhead strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vact{display:flex;gap:6px;align-items:center;flex:none}
+.vbody{flex:1;min-height:0;position:relative}
+#vframe{width:100%;height:100%;border:0;background:#fff}
+.vmsg{margin:16px;color:var(--bad)}
+body.viewer-open #root{margin-right:var(--vw)}
+tr.row.viewing td{background:var(--accent-soft)}
+/* colonnes resserrées pour laisser la place au panneau */
+.app{grid-template-columns:216px minmax(0,1fr)}
+.side{padding:12px;gap:16px}
+table.t{min-width:780px}
+.t th{padding:6px 5px;font-size:10.5px;letter-spacing:.03em}
+.t td{padding:3px 4px}
+input.dt{width:108px;font-size:12px;padding:4px}
+input.lbl{min-width:140px;font-size:12.5px}
+select.cell{max-width:112px;font-size:12px;padding:3px 4px}
+.seg button{padding:4px 5px!important;font-size:11px!important}
+input.cell.m{width:78px}
+select.rate{width:62px}
+.t .btn.small{padding:3px 6px;font-size:11px}
+.chip .fn,.lnk2{max-width:110px}
+.mhead,.tabs,#pane{min-width:0}
+
+select.cell[data-f=bank]{width:52px}
+.chip .fn,.chip .lnk2{max-width:84px}
+.t td:last-child{width:62px}
+.pill{font-size:11px;padding:2px 7px}
+/* panneau ouvert : le volet société/période se replie pour donner la place au tableau */
+body.viewer-open .app{grid-template-columns:minmax(0,1fr)}
+body.viewer-open .side{display:none}

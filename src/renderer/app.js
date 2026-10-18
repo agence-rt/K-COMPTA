@@ -59,6 +59,32 @@ const IC={
 /* ---------- rendu ---------- */
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{t.hidden=true},3600)}
 
+/* ---------- panneau PDF (à droite) ---------- */
+const V={cur:null,url:null};
+async function showPdf(rel,name){
+  const fr=$('#vframe'),msg=$('#vmsg');
+  V.cur={soc:S.soc,period:S.period[S.soc],rel,name};
+  $('#vtitle').textContent=name;$('#viewer').hidden=false;document.body.classList.add('viewer-open');
+  msg.hidden=true;
+  try{
+    const buf=await A.doc.read(V.cur.soc,V.cur.period,rel);
+    if(V.url)URL.revokeObjectURL(V.url);
+    V.url=URL.createObjectURL(new Blob([buf],{type:'application/pdf'}));
+    fr.src=V.url;fr.hidden=false;
+  }catch(e){fr.hidden=true;fr.removeAttribute('src');msg.hidden=false;msg.textContent='Document illisible : '+e.message}
+  render();
+}
+function hidePdf(){
+  V.cur=null;$('#viewer').hidden=true;document.body.classList.remove('viewer-open');
+  $('#vframe').removeAttribute('src');if(V.url){URL.revokeObjectURL(V.url);V.url=null}render();
+}
+$('#vclose').addEventListener('click',hidePdf);
+$('#vopen').addEventListener('click',()=>{if(V.cur)A.doc.open(V.cur.soc,V.cur.period,V.cur.rel)});
+(function(){const g=$('#vgrip');let drag=false;
+  g.addEventListener('mousedown',e=>{drag=true;e.preventDefault()});
+  window.addEventListener('mouseup',()=>{drag=false});
+  window.addEventListener('mousemove',e=>{if(!drag)return;const w=Math.min(Math.max(window.innerWidth-e.clientX,320),window.innerWidth-520);document.documentElement.style.setProperty('--vw',w+'px')}) })();
+
 function render(){
   if(S.auth!=='ok'){root.innerHTML=gateHTML();return}
   root.innerHTML=
@@ -74,7 +100,7 @@ function sideHTML(){
   const y=yearOf(),years=[];for(let i=y-3;i<=new Date().getFullYear()+1;i++)years.push(i);
   const yopts=years.map(v=>'<option value="'+v+'"'+(v===y?' selected':'')+'>'+v+'</option>').join('');
   const opts=C.periodsFor(S.soc,y).map(p=>'<option value="'+p.id+'"'+(p.id===S.period[S.soc]?' selected':'')+'>'+esc(p.label)+'</option>').join('');
-  const files=st.statements.length?'<ul class="files">'+st.statements.map(f=>'<li>'+IC.pdf+'<span class="fn" title="'+esc(f.name)+'">'+esc(f.name)+'</span>'+(f.src==='dropbox'?'<span class="pill">Dropbox</span>':'')+(f.info?'<span class="info">'+esc(f.info)+'</span>':'')+'</li>').join('')+'</ul>':'<p class="note" style="margin:0 0 8px">Aucun relevé pour cette période.</p>';
+  const files=st.statements.length?'<ul class="files">'+st.statements.map((f,i)=>'<li>'+IC.pdf+'<button class="fn lnk2" title="Afficher '+esc(f.name)+'" data-act="openstmt" data-i="'+i+'">'+esc(f.name)+'</button>'+(f.src==='dropbox'?'<span class="pill">Dropbox</span>':'')+(f.info?'<span class="info">'+esc(f.info)+'</span>':'')+'</li>').join('')+'</ul>':'<p class="note" style="margin:0 0 8px">Aucun relevé pour cette période.</p>';
   const dbx=cfg.root?
     '<p style="margin:0 0 8px"><span class="pill ok">Dossier Dropbox trouvé</span></p><p style="margin:0 0 8px;font:12px/1.5 var(--mono);word-break:break-all">'+esc(cfg.root)+'\\AGOA-COMPTA\\A-TRAITER</p>'+
     '<button class="btn small" data-act="scaninbox" id="scanbtn">'+(S.inbox?'Lire les '+S.inbox+' relevé'+(S.inbox>1?'s':'')+' à traiter':'Chercher les nouveaux relevés')+'</button>':
@@ -136,9 +162,9 @@ function rowHTML(l){
   const open=S.expanded.has(l.id)&&(l.type==='dep'||l.type==='rec');
   const banks=SOC[S.soc].banks;
   const seg='<div class="seg" role="group" aria-label="Nature de la ligne">'+[['dep','Dépense'],['rec','Recette'],['hors','Hors TVA']].map(t=>'<button data-act="type" data-id="'+l.id+'" data-v="'+t[0]+'" aria-pressed="'+(l.type===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
-  let r='<tr class="row"><td><input class="cell dt" type="date" data-f="date" data-id="'+l.id+'" value="'+esc(l.date)+'" aria-label="Date"></td>'+
+  let r='<tr class="row'+(V.cur&&l.doc&&l.doc.rel===V.cur.rel?' viewing':'')+'"><td><input class="cell dt" type="date" data-f="date" data-id="'+l.id+'" value="'+esc(l.date)+'" aria-label="Date"></td>'+
     '<td><input class="cell lbl" data-f="label" data-id="'+l.id+'" value="'+esc(l.label)+'" placeholder="Libellé du relevé" aria-label="Libellé">'+(l.hint?'<div class="hint">'+esc(l.hint.text)+'</div>':'')+'</td>'+
-    (banks.length>1?'<td><select class="cell" data-f="bank" data-id="'+l.id+'" aria-label="Compte">'+banks.map(b=>'<option value="'+b.id+'"'+(l.bank===b.id?' selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></td>':'')+
+    (banks.length>1?'<td><select class="cell" data-f="bank" data-id="'+l.id+'" aria-label="Compte">'+banks.map(b=>'<option value="'+b.id+'" title="'+esc(b.name)+'"'+(l.bank===b.id?' selected':'')+'>'+b.id.toUpperCase()+'</option>').join('')+'</select></td>':'')+
     '<td><input class="cell m" inputmode="decimal" data-f="debit" data-id="'+l.id+'" value="'+(l.debit?fmt(l.debit):'')+'" aria-label="Débit"></td>'+
     '<td><input class="cell m" inputmode="decimal" data-f="credit" data-id="'+l.id+'" value="'+(l.credit?fmt(l.credit):'')+'" aria-label="Crédit"></td>'+
     '<td>'+seg+'</td><td>'+rateCell(l)+'</td><td class="num mono" id="tv-'+l.id+'"></td><td id="dc-'+l.id+'">'+docCell(l)+'</td>'+
@@ -159,7 +185,7 @@ function rateCell(l){
 }
 function docCell(l){
   if(l.doc)return '<span class="chip">'+IC.clip+'<button class="fn lnk2" title="Ouvrir '+esc(l.doc.name)+'" data-act="opendoc" data-id="'+l.id+'">'+esc(l.doc.name)+'</button><button class="ico" style="padding:2px" data-act="rmdoc" data-id="'+l.id+'" aria-label="Retirer le justificatif">'+IC.x+'</button></span>';
-  return '<button class="btn small'+(needsDoc(l)?' warn':'')+'" data-act="adddoc" data-id="'+l.id+'">Ajouter PDF</button>';
+  return '<button class="btn small'+(needsDoc(l)?' warn':'')+'" data-act="adddoc" data-id="'+l.id+'" title="Ajouter le justificatif PDF">+ PDF</button>';
 }
 function edHTML(l){
   const dep=l.type==='dep',rates=dep?RATES_DEP:RATES_REC;
@@ -374,6 +400,7 @@ function fillAll(l,rate){C.fillAll(l,rate)}
 function setType(l,v){C.setType(l,v);S.expanded.delete(l.id)}
 async function switchTo(soc,period){
   await flushSave();
+  if(V.cur&&(V.cur.soc!==soc||V.cur.period!==period)){V.cur=null;$('#viewer').hidden=true;document.body.classList.remove('viewer-open');$('#vframe').removeAttribute('src')}
   S.soc=soc;S.period[soc]=period;S.filter='all';S.bankf='all';S.expanded.clear();
   await load();render();
 }
@@ -423,9 +450,10 @@ root.addEventListener('click',async e=>{
   else if(a==='adddoc'&&l){
     await flushSave();
     const r=await A.doc.pick(S.soc,S.period[S.soc],{date:l.date,label:l.label});
-    if(r&&r.doc){l.doc=r.doc;render()}
+    if(r&&r.doc){l.doc=r.doc;render();await showPdf(r.doc.rel,r.doc.name)}
   }
-  else if(a==='opendoc'&&l&&l.doc){A.doc.open(S.soc,S.period[S.soc],l.doc.rel)}
+  else if(a==='opendoc'&&l&&l.doc){await showPdf(l.doc.rel,l.doc.name)}
+  else if(a==='openstmt'){const f=st.statements[+b.dataset.i];if(f&&f.rel)await showPdf(f.rel,f.name)}
   else if(a==='rmdoc'&&l){l.doc=null;render()}
   else if(a==='delline'&&l){st.lines=st.lines.filter(x=>x.id!==id);S.expanded.delete(id);render()}
   else if(a==='addline'){

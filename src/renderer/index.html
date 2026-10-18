@@ -2,13 +2,18 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; font-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; frame-src blob:; child-src blob:; font-src 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AGOA COMPTA</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="root"></div>
+<aside id="viewer" hidden aria-label="Visionneuse PDF">
+  <div class="vgrip" id="vgrip" title="Glisser pour redimensionner"></div>
+  <div class="vhead"><strong id="vtitle">Document</strong><span class="vact"><button class="btn small" id="vopen">Ouvrir à part</button><button class="ico" id="vclose" aria-label="Fermer le panneau">✕</button></span></div>
+  <div class="vbody"><iframe id="vframe" title="Document PDF"></iframe><p class="vmsg" id="vmsg" hidden></p></div>
+</aside>
 <div id="toast" role="status" hidden></div>
 <script src="../core/calc.js"></script>
 <script src="app.js"></script>

@@ -47,6 +47,7 @@ function createApi({ config, auth, dialogs, openPath, version, pending }) {
       if (!f || !f[0]) return null;
       return { doc: s.attachDoc(soc, period, line, f[0]) };
     },
+    'doc:read': (soc, period, rel) => { guard(); return fs.readFileSync(need().absPath(soc, period, rel)); },
     'doc:open': async (soc, period, rel) => { guard(); await openPath(need().absPath(soc, period, rel)); return true; },
     'folder:open': async (soc, period, sub) => {
       guard(); const s = need(); const d = sub ? s.absPath(soc, period, sub) : s.periodDir(soc, period);

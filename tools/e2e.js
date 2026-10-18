@@ -32,7 +32,7 @@ const assert = require('assert');
       auth: { session: c('auth:session'), login: c('auth:login'), logout: c('auth:logout') },
       period: { load: c('period:load'), save: c('period:save'), saveSync: () => true },
       inbox: { list: c('inbox:list'), importAll: c('inbox:importAll') }, statement: { pick: c('statement:pick') },
-      doc: { pick: c('doc:pick'), open: c('doc:open') }, folder: { open: c('folder:open') }, export: { run: c('export:run') } };
+      doc: { pick: c('doc:pick'), open: c('doc:open'), read: async (...a) => { const r = await window.__call('doc:read', a); if (r.e) throw new Error(r.e); return new Uint8Array(Object.values(r.v.data || r.v)); } }, folder: { open: c('folder:open') }, export: { run: c('export:run') } };
   });
   await page.goto('file://' + path.resolve(__dirname, '../src/renderer/index.html'));
   const shot = n => page.screenshot({ path: path.join(process.env.SHOTS || tmp, n + '.png') });
@@ -57,6 +57,8 @@ const assert = require('assert');
   await shot('2b-ventilation');
   await row.locator('[data-act=adddoc]').click();
   await page.waitForSelector('.chip .fn');
+  await page.waitForSelector('#viewer:not([hidden])'); assert.ok((await page.getAttribute('#vframe','src')).startsWith('blob:')); assert.ok(await page.locator('body.viewer-open').count());
+  await page.waitForTimeout(500); await page.evaluate(() => window.scrollTo(0, 0)); await page.locator('tr.row.viewing').scrollIntoViewIfNeeded(); await shot('2c-panneau');
   await page.click('[data-act=tab][data-v=syn]'); console.log('synthèse:', (await page.textContent('.result')).replace(/\s+/g, ' ').slice(0, 160)); await shot('3-synthese');
   await page.click('[data-act=tab][data-v=exp]');
   await page.click('[data-act=exp-all]'); await page.waitForSelector('#expout li');
