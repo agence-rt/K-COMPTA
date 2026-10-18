@@ -35,7 +35,7 @@ const assert = require('assert');
       auth: { session: c('auth:session'), login: c('auth:login'), logout: c('auth:logout') },
       period: { load: c('period:load'), save: c('period:save'), saveSync: () => true },
       inbox: { list: c('inbox:list'), importAll: c('inbox:importAll') }, statement: { pick: c('statement:pick') },
-      doc: { pick: c('doc:pick'), open: c('doc:open'), read: async (...a) => { const r = await window.__call('doc:read', a); if (r.e) throw new Error(r.e); return new Uint8Array(Object.values(r.v.data || r.v)); } }, folder: { open: c('folder:open') }, file: { saveAs: c('file:saveAs'), backups: c('file:backups') }, export: { run: c('export:run') } };
+      doc: { remove: c('doc:remove'), audit: c('doc:audit'), pick: c('doc:pick'), open: c('doc:open'), read: async (...a) => { const r = await window.__call('doc:read', a); if (r.e) throw new Error(r.e); return new Uint8Array(Object.values(r.v.data || r.v)); } }, folder: { open: c('folder:open') }, file: { saveAs: c('file:saveAs'), backups: c('file:backups') }, export: { run: c('export:run') } };
   });
   await page.goto('file://' + path.resolve(__dirname, '../src/renderer/index.html'));
   const shot = n => page.screenshot({ path: path.join(process.env.SHOTS || tmp, n + '.png') });
@@ -85,6 +85,19 @@ const assert = require('assert');
   assert.equal(await col('sg'), 'rgb(198, 40, 40)'); assert.equal(await col('cm'), 'rgb(21, 101, 192)');
   await page.click('[data-act=saveas]'); await page.waitForFunction(() => /Fichier enregistré/.test(document.querySelector('#toast').textContent));
   assert.ok(fs.readdirSync(root).some(n => /^sortie-.*\.compta$/.test(n))); console.log('version, couleurs, enregistrer sous OK');
+  // retrait d'un justificatif : le fichier quitte le dossier justificatifs
+  const jd = path.join(st.periodDir('archi', '2026-09'), 'justificatifs'), nBefore = fs.readdirSync(jd).length;
+  const adobe = page.locator('tr.row', { has: page.locator('input[value="PAIEMENT CB ADOBE"]') });
+  await adobe.locator('[data-act=rmdoc]').click(); await page.waitForTimeout(600);
+  assert.strictEqual(fs.readdirSync(jd).length, nBefore - 1); assert.ok(fs.existsSync(path.join(st.periodDir('archi', '2026-09'), 'corbeille')));
+  // remplacement : un nouveau PDF sur la ligne VISTAPRINT ne laisse qu'un fichier pour cette ligne
+  const vpr = page.locator('tr.row', { has: page.locator('input[value="PAIEMENT CB VISTAPRINT"]') });
+  const n2 = fs.readdirSync(jd).length; await vpr.locator('[data-act=adddoc]').first().click(); await page.waitForTimeout(800);
+  assert.strictEqual(fs.readdirSync(jd).length, n2);
+  // nettoyage / vérification
+  await page.click('[data-act=tab][data-v=doc]'); await page.click('[data-act=auditdocs]'); await page.waitForSelector('#auditout .note');
+  console.log('audit:', (await page.textContent('#auditout')).replace(/\s+/g, ' ').slice(0, 200)); await page.click('[data-act=tab][data-v=lines]');
+  console.log('retrait / remplacement / nettoyage OK');
   await page.click('[data-act=tab][data-v=syn]'); console.log('synthèse:', (await page.textContent('.result')).replace(/\s+/g, ' ').slice(0, 160)); await shot('3-synthese');
   await page.click('[data-act=tab][data-v=exp]');
   await page.click('[data-act=exp-all]'); await page.waitForSelector('#expout li');
@@ -93,11 +106,11 @@ const assert = require('assert');
   await page.waitForTimeout(1200);                                             // enregistrement automatique
   const d = st.load('archi', '2026-09'); const l = d.lines.find(x => x.label.includes('ADOBE'));
   console.log('ligne ADOBE enregistrée:', l.type, !!l.doc, l.vent.length);
-  assert.strictEqual(l.type, 'dep'); assert.ok(l.doc); assert.strictEqual(l.vent[0].rate, 10); assert.strictEqual(l.vent[0].ht, 100);
+  assert.strictEqual(l.type, 'dep'); assert.ok(!l.doc); assert.strictEqual(l.vent[0].rate, 10); assert.strictEqual(l.vent[0].ht, 100);
   assert.ok(fs.existsSync(path.join(st.periodDir('archi', '2026-09'), 'periode.compta')));
   const ex = fs.readdirSync(path.join(st.periodDir('archi', '2026-09'), 'exports')); console.log(ex); assert.strictEqual(ex.length, 3);
   // rechargement : l'état revient du disque
-  await page.reload(); await page.waitForSelector('tr.row'); assert.strictEqual(await page.locator('tr.row').count(), 50); assert.strictEqual(await page.locator('.chip .fn').count(), 3);
+  await page.reload(); await page.waitForSelector('tr.row'); assert.strictEqual(await page.locator('tr.row').count(), 50); assert.strictEqual(await page.locator('.chip .fn').count(), 2);
   console.log('erreurs page:', errs); assert.deepStrictEqual(errs, []);
   await br.close(); console.log('E2E OK');
 })().catch(e => { console.error('E2E KO', e); process.exit(1); });

@@ -93,6 +93,8 @@ async function showPdf(rel,name){
 }
 /* replie le volet (le document affiché est conservé) */
 function hidePdf(){setOpen(false)}
+/* le document affiché vient d'être retiré ou remplacé : on vide la visionneuse */
+function hidePdfDoc(){V.cur=null;if(V.url){URL.revokeObjectURL(V.url);V.url=null}emptyPdf()}
 $('#vclose').addEventListener('click',hidePdf);
 $('#vtab').addEventListener('click',()=>{setOpen(true);if(!V.cur)emptyPdf();fillVsel()});
 $('#vsel').addEventListener('change',e=>{const l=(store().lines||[]).find(x=>x.doc&&x.doc.rel===e.target.value);if(l)showPdf(l.doc.rel,l.doc.name)});
@@ -201,7 +203,7 @@ function rateCell(l){
   return '<select class="cell rate" data-f="rate" data-id="'+l.id+'" aria-label="Taux de TVA">'+opts.join('')+'</select>';
 }
 function docCell(l){
-  if(l.doc)return '<span class="chip">'+IC.clip+'<button class="fn lnk2" title="Ouvrir '+esc(l.doc.name)+'" data-act="opendoc" data-id="'+l.id+'">'+esc(l.doc.name)+'</button><button class="ico" style="padding:2px" data-act="rmdoc" data-id="'+l.id+'" aria-label="Retirer le justificatif">'+IC.x+'</button></span>';
+  if(l.doc)return '<span class="chip">'+IC.clip+'<button class="fn lnk2" title="Ouvrir '+esc(l.doc.name)+'" data-act="opendoc" data-id="'+l.id+'">'+esc(l.doc.name)+'</button><button class="ico" style="padding:2px" data-act="adddoc" data-id="'+l.id+'" aria-label="Remplacer le justificatif" title="Remplacer le justificatif">↻</button><button class="ico" style="padding:2px" title="Retirer le justificatif" data-act="rmdoc" data-id="'+l.id+'" aria-label="Retirer le justificatif">'+IC.x+'</button></span>';
   return '<button class="btn small'+(needsDoc(l)?' warn':'')+'" data-act="adddoc" data-id="'+l.id+'" title="Ajouter le justificatif PDF">+ PDF</button>';
 }
 function edHTML(l){
@@ -317,7 +319,7 @@ function docHTML(){
   return '<div class="spec"><div class="card"><h3>Rangement</h3><div class="scroll"><ul class="tree root"><li>003-COMPTABILITE/</li><li><ul class="tree">'+
     '<li class="exist">ARCHI PRO/ · anciennes déclarations et bilans</li><li class="exist">FAURIEL49/ · anciennes déclarations et bilans</li>'+
     '<li>AGOA-COMPTA/<ul class="tree"><li><span class="new">A-TRAITER/</span> <span class="exist">· relevés déposés, lus puis rangés</span></li><li>'+esc(s.folder)+'/'+yearOf()+'/'+p.folder+'/<ul class="tree"><li>periode.compta <span class="exist">· lignes, classement, soldes</span></li><li>releves/<ul class="tree">'+sl+'</ul></li><li>justificatifs/<ul class="tree">'+jl+'</ul></li><li>exports/</li></ul></li></ul></li></ul></li></ul></div>'+
-    '<p style="margin:10px 0 0"><button class="btn small" data-act="openfolder">Ouvrir le dossier de la période</button></p></div>'+
+    '<p style="margin:10px 0 0"><button class="btn small" data-act="openfolder">Ouvrir le dossier de la période</button> <button class="btn small" data-act="auditdocs" title="Renomme les PDF d\'après le code de la ligne, relit les montants et range dans « corbeille » les PDF qu\'aucune ligne n\'utilise">Nettoyer et vérifier les justificatifs</button></p><div id="auditout"></div></div>'+
     '<div class="card"><h3>Dossier de la période</h3><p style="margin:0 0 8px;font-size:13px;word-break:break-all">'+esc(base)+'</p><ul class="chk" id="docchk"></ul></div></div>';
 }
 function docChecksHTML(){
@@ -460,6 +462,18 @@ root.addEventListener('click',async e=>{
   const l=id?find(id):null,st=store();
   if(a==='exp-xlsx'||a==='exp-pdf'||a==='exp-lines'||a==='exp-all'){runExport(a.slice(4))}
   else if(a==='openexp'){A.folder.open(S.soc,S.period[S.soc],'exports')}
+  else if(a==='auditdocs'){
+    setBusy(true);
+    try{
+      await flushSave();const r=await A.doc.audit();
+      Object.keys(S.data).forEach(k=>{delete S.data[k];delete snap[k]});await load();render();
+      const R=r.reports,sum=k=>R.reduce((a,x)=>a+x[k].length,0),ref=R.reduce((a,x)=>a+x.refreshed,0),n=R.reduce((a,x)=>a+x.files,0);
+      const items=[];R.forEach(x=>{const tag=x.soc+' '+x.period+' : ';x.renamed.forEach(y=>items.push(['ok',tag+'renommé '+y.from+' → '+y.to]));x.trashed.forEach(y=>items.push(['warn',tag+y+' non utilisé, rangé dans « corbeille »']));x.missing.forEach(y=>items.push(['bad',tag+'fichier introuvable pour '+y.code+' ('+y.name+')']));x.shared.forEach(y=>items.push(['bad',tag+y.name+' sert à plusieurs lignes : '+y.codes.join(', ')]))});
+      const head='<p class="note" style="margin:10px 0 6px">'+n+' PDF contrôlé'+(n>1?'s':'')+' · '+sum('renamed')+' renommé(s) · '+sum('trashed')+' retiré(s) · '+ref+' relu(s) · '+sum('missing')+' introuvable(s) · '+sum('shared')+' partagé(s)</p>';
+      const o=$('#auditout');if(o)o.innerHTML=head+(items.length?'<ul class="chk">'+items.map(i=>'<li><span class="pill '+(i[0]==='ok'?'ok':i[0]==='warn'?'todo':'bad')+'">'+(i[0]==='ok'?'Corrigé':i[0]==='warn'?'Rangé':'À voir')+'</span><span>'+esc(i[1])+'</span></li>').join('')+'</ul>':'');
+      toast('Justificatifs vérifiés : '+sum('renamed')+' renommé(s), '+sum('trashed')+' retiré(s), '+sum('missing')+' introuvable(s).');
+    }catch(x){toast('Vérification impossible : '+x.message)}finally{setBusy(false)}
+  }
   else if(a==='openfolder'){A.folder.open(S.soc,S.period[S.soc],'')}
   else if(a==='soc'){await switchTo(v,S.period[v])}
   else if(a==='tab'){S.tab=v;render()}
@@ -474,14 +488,14 @@ root.addEventListener('click',async e=>{
   else if(a==='all'&&l){fillAll(l,+v);render()}
   else if(a==='adddoc'&&l){
     await flushSave();
-    const r=await A.doc.pick(S.soc,S.period[S.soc],{code:l.code,date:l.date,label:l.label});
-    if(r&&r.doc){l.doc=r.doc;l.valid=false;render();await showPdf(r.doc.rel,r.doc.name)}
+    const r=await A.doc.pick(S.soc,S.period[S.soc],{code:l.code,date:l.date,label:l.label,oldRel:l.doc?l.doc.rel:null});
+    if(r&&r.doc){if(V.cur&&l.doc&&V.cur.rel===l.doc.rel)hidePdfDoc();l.doc=r.doc;l.valid=false;render();await showPdf(r.doc.rel,r.doc.name)}
   }
   else if(a==='opendoc'&&l&&l.doc){await showPdf(l.doc.rel,l.doc.name)}
   else if(a==='openstmt'){const f=st.statements[+b.dataset.i];if(f&&f.rel)await showPdf(f.rel,f.name)}
-  else if(a==='rmdoc'&&l){l.doc=null;l.valid=false;render()}
+  else if(a==='rmdoc'&&l){const old=l.doc;l.doc=null;l.valid=false;if(old&&V.cur&&V.cur.rel===old.rel)hidePdfDoc();render();if(old){try{await A.doc.remove(S.soc,S.period[S.soc],old.rel)}catch(x){toast('Fichier non retiré du dossier : '+x.message)}}}
   else if(a==='validate'&&l){l.valid=!l.valid;render()}
-  else if(a==='delline'&&l){st.lines=st.lines.filter(x=>x.id!==id);S.expanded.delete(id);render()}
+  else if(a==='delline'&&l){if(l.doc){if(V.cur&&V.cur.rel===l.doc.rel)hidePdfDoc();try{await A.doc.remove(S.soc,S.period[S.soc],l.doc.rel)}catch(x){toast('Fichier non retiré du dossier : '+x.message)}}st.lines=st.lines.filter(x=>x.id!==id);S.expanded.delete(id);render()}
   else if(a==='addline'){
     const nl=C.makeLine({date:per().start,bank:S.bankf!=='all'?S.bankf:SOC[S.soc].banks[0].id});
     st.lines.push(nl);C.assignCodes(st);S.filter='all';render();

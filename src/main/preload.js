@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('agoa', {
   period: { load: (s, p) => call('period:load', s, p), save: (s, p, d) => call('period:save', s, p, d), saveSync: (s, p, d) => ipcRenderer.sendSync('period:saveSync', s, p, d) },
   inbox: { list: () => call('inbox:list'), importAll: () => call('inbox:importAll') },
   statement: { pick: () => call('statement:pick') },
-  doc: { pick: (s, p, l) => call('doc:pick', s, p, l), open: (s, p, r) => call('doc:open', s, p, r), read: (s, p, r) => call('doc:read', s, p, r) },
+  doc: { remove: (s, p, r) => call('doc:remove', s, p, r), audit: () => call('doc:audit'), pick: (s, p, l) => call('doc:pick', s, p, l), open: (s, p, r) => call('doc:open', s, p, r), read: (s, p, r) => call('doc:read', s, p, r) },
   file: { saveAs: (s, p) => call('file:saveAs', s, p), backups: (s, p) => call('file:backups', s, p) },
   folder: { open: (s, p, sub) => call('folder:open', s, p, sub) },
   export: { run: (s, p, k) => call('export:run', s, p, k) }

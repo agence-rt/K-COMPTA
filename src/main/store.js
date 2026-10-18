@@ -80,7 +80,8 @@ class Store {
     const dir = path.join(path.dirname(file), 'backups'); mkdir(dir);
     const st = new Date(now), p2 = n => String(n).padStart(2, '0');
     const stamp = st.getFullYear() + p2(st.getMonth() + 1) + p2(st.getDate()) + '-' + p2(st.getHours()) + p2(st.getMinutes()) + p2(st.getSeconds()) + '-' + String(st.getMilliseconds()).padStart(3, '0');
-    retryFs(() => fs.copyFileSync(file, path.join(dir, 'periode_' + stamp + '.compta')));
+    let i = 0, bn; do { bn = 'periode_' + stamp + '-' + String(i++).padStart(2, '0') + '.compta'; } while (fs.existsSync(path.join(dir, bn)));
+    retryFs(() => fs.copyFileSync(file, path.join(dir, bn)));
     last[file] = now;
     const all = fs.readdirSync(dir).filter(n => /^periode_.*\.compta$/.test(n)).sort();
     all.slice(0, Math.max(0, all.length - this.keep)).forEach(n => { try { fs.unlinkSync(path.join(dir, n)); } catch (e) { /* ignore */ } });
@@ -104,16 +105,70 @@ class Store {
   }
 
   /** Range un justificatif PDF sous le code de la ligne (ex. 2026-09-CM-12.pdf) et le lit (émetteur, montant). Copie ou déplace selon `move`. */
-  async attachDoc(soc, periodId, line, srcPath, { move = false } = {}) {
+  async attachDoc(soc, periodId, line, srcPath, { move = false, replace = null } = {}) {
     const dir = path.join(this.periodDir(soc, periodId), 'justificatifs'); mkdir(dir);
     const base = line.code || ((line.date || 'sans-date') + '_' + C.slug(line.label || 'ligne'));
-    const name = uniqueName(dir, base + '.pdf');
     const buf = fs.readFileSync(srcPath);
     let a = null; try { a = await analyseInvoice(buf); } catch (e) { /* PDF non lisible : rangé quand même */ }
+    if (replace) this.trashDoc(soc, periodId, replace);          // l'ancien PDF quitte le dossier : le nouveau reprend le nom du code
+    const name = uniqueName(dir, base + '.pdf');
     retryFs(() => fs.writeFileSync(path.join(dir, name), buf));
     if (move) { try { retryFs(() => fs.unlinkSync(srcPath), 4); } catch (e) { /* ignore */ } }
     return { name, original: path.basename(srcPath), rel: path.join('justificatifs', name),
       total: a && a.total != null ? a.total : null, ht: a ? a.ht : null, issuer: a ? a.issuer : null, docDate: a ? a.date : null };
+  }
+
+  /** Retire un justificatif du dossier « justificatifs » : il est déplacé dans « corbeille » (à côté de periode.compta), jamais perdu. */
+  trashDoc(soc, periodId, rel) {
+    if (!rel) return null;
+    const src = this.absPath(soc, periodId, rel);
+    if (!fs.existsSync(src)) return null;
+    const dir = path.join(this.periodDir(soc, periodId), 'corbeille'); mkdir(dir);
+    const d = new Date(), p2 = n => String(n).padStart(2, '0');
+    const stamp = d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes()) + p2(d.getSeconds());
+    const name = uniqueName(dir, stamp + '_' + path.basename(src));
+    try { retryFs(() => fs.renameSync(src, path.join(dir, name))); } catch (e) { retryFs(() => fs.copyFileSync(src, path.join(dir, name))); retryFs(() => fs.unlinkSync(src)); }
+    return name;
+  }
+
+  /** Nettoie et vérifie les justificatifs d'une période : un PDF par ligne, nommé d'après le code de la ligne ; les fichiers
+   *  qu'aucune ligne n'utilise partent dans « corbeille » ; les PDF sont relus (montant, émetteur). Rend le détail. */
+  async auditDocs(soc, periodId) {
+    const dir = path.join(this.periodDir(soc, periodId), 'justificatifs');
+    const rep = { soc, period: periodId, renamed: [], trashed: [], missing: [], shared: [], refreshed: 0, files: 0, changed: false };
+    if (!this.has(soc, periodId)) return rep;
+    const data = this.load(soc, periodId);
+    const withDoc = data.lines.filter(l => l.doc && l.doc.rel);
+    const norm = r => path.normalize(r).toLowerCase();
+    const uses = {}; withDoc.forEach(l => { const k = norm(l.doc.rel); (uses[k] = uses[k] || []).push(l); });
+    // 1. deux lignes sur le même fichier : on le signale (à la main : un justificatif ne couvre qu'une ligne)
+    Object.keys(uses).forEach(k => { if (uses[k].length > 1) rep.shared.push({ name: path.basename(uses[k][0].doc.rel), codes: uses[k].map(l => l.code || l.label) }); });
+    // 2. fichier absent, nom différent du code, relecture du PDF
+    for (const l of withDoc) {
+      const abs = path.resolve(this.periodDir(soc, periodId), l.doc.rel);
+      if (!fs.existsSync(abs)) { rep.missing.push({ code: l.code || l.label, name: l.doc.name }); continue; }
+      const want = l.code ? l.code + '.pdf' : null;
+      if (want && path.basename(abs) !== want && uses[norm(l.doc.rel)].length === 1) {
+        const target = path.join(dir, want), clash = fs.existsSync(target) && withDoc.some(x => x !== l && norm(x.doc.rel) === norm(path.join('justificatifs', want)));
+        if (!clash) {
+          if (fs.existsSync(target)) this.trashDoc(soc, periodId, path.join('justificatifs', want));   // ancien fichier orphelin au même nom
+          retryFs(() => fs.renameSync(abs, target));
+          rep.renamed.push({ from: path.basename(abs), to: want }); l.doc.name = want; l.doc.rel = path.join('justificatifs', want); rep.changed = true;
+        }
+      }
+      try {
+        const a = await analyseInvoice(fs.readFileSync(path.resolve(this.periodDir(soc, periodId), l.doc.rel)));
+        const nt = a.total != null ? a.total : null;
+        if (l.doc.total !== nt || l.doc.issuer !== (a.issuer || null)) { l.doc.total = nt; l.doc.ht = a.ht; l.doc.issuer = a.issuer || null; l.doc.docDate = a.date; rep.refreshed++; rep.changed = true; }
+      } catch (e) { /* PDF illisible : conservé tel quel */ }
+    }
+    // 3. fichiers que plus aucune ligne n'utilise
+    let files = []; try { files = fs.readdirSync(dir).filter(n => /\.pdf$/i.test(n)); } catch (e) { files = []; }
+    rep.files = files.length;
+    const used = new Set(data.lines.filter(l => l.doc && l.doc.rel).map(l => norm(l.doc.rel)));
+    files.forEach(n => { if (!used.has(norm(path.join('justificatifs', n)))) { this.trashDoc(soc, periodId, path.join('justificatifs', n)); rep.trashed.push(n); } });
+    if (rep.changed) this.save(soc, periodId, data);
+    return rep;
   }
 
   /** Toutes les périodes déjà enregistrées : [{ soc, period, data }]. */
