@@ -279,8 +279,9 @@ function expHTML(){
   const left='<div class="stack"><div class="card"><h3>Exporter la période</h3>'+
     '<p style="margin:0 0 12px"><span class="pill '+(s.ready?'ok':'warn')+'">'+(s.ready?'Dossier prêt':'Dossier en cours')+'</span></p>'+
     '<div class="act"><button class="btn primary" data-act="exp-xlsx"'+(m.flat.length?'':' disabled')+'>Lignes et TVA (Excel)</button><small>Un onglet par compte bancaire, lignes classées en dépenses, recettes et hors TVA, plus l\'onglet Résumé TVA.</small></div>'+
+    '<div class="act"><button class="btn primary" data-act="exp-lines"'+(m.flat.length?'':' disabled')+'>Lignes et TVA (PDF)</button><small>Résumé de la TVA (formulaire CA3), soldes par compte, puis les lignes de chaque compte avec nature, taux, base HT et TVA.</small></div>'+
     '<div class="act"><button class="btn primary" data-act="exp-pdf"'+(withDoc?'':' disabled')+'>Justificatifs classés (PDF)</button><small>'+(withDoc?withDoc+' justificatif'+(withDoc>1?'s':'')+' numéroté'+(withDoc>1?'s':'')+' dans l\'ordre ci-contre, avec page de garde et résumé de la TVA.':'Aucun justificatif rattaché pour cette période.')+(miss?' '+miss+' manquant'+(miss>1?'s':'')+', listé'+(miss>1?'s':'')+' sur la page de garde.':'')+'</small></div>'+
-    '<div class="act"><button class="btn" data-act="exp-all"'+(m.flat.length?'':' disabled')+'>Tout exporter</button><small>Crée les deux fichiers.</small></div>'+
+    '<div class="act"><button class="btn primary" data-act="exp-all"'+(m.flat.length?'':' disabled')+'>Tout exporter</button><small>Crée la synthèse TVA (Excel) et les deux PDF compilés : lignes et TVA, justificatifs classés.</small></div>'+
     '<p class="note">Les fichiers sont rangés dans <span class="mono" style="word-break:break-all">'+esc(path)+'</span></p>'+
     '<div id="expout"></div></div></div>';
   let right;
@@ -300,8 +301,8 @@ async function runExport(kind){
     await flushSave();
     const r=await A.export.run(S.soc,S.period[S.soc],kind);
     const out=$('#expout');
-    if(out)out.innerHTML=r.files.length?'<ul class="chk" style="margin-top:10px">'+r.files.map(f=>'<li><span class="pill ok">Créé</span><span>'+esc(f.name)+'</span></li>').join('')+'</ul><button class="btn small" style="margin-top:8px" data-act="openexp">Ouvrir le dossier</button>':'';
-    toast(r.files.length?r.files.length+' fichier'+(r.files.length>1?'s':'')+' créé'+(r.files.length>1?'s':'')+'.':(r.message||'Rien à exporter.'));
+    if(out)out.innerHTML=r.files.length?'<ul class="chk" style="margin-top:10px">'+r.files.map(f=>'<li><span class="pill ok">Créé</span><span>'+esc(f.name)+'</span></li>').join('')+'</ul>'+(r.message?'<p class="note" style="color:var(--bad)">'+esc(r.message)+'</p>':'')+'<button class="btn small" style="margin-top:8px" data-act="openexp">Ouvrir le dossier</button>':'';
+    toast(r.files.length?r.files.length+' fichier'+(r.files.length>1?'s':'')+' créé'+(r.files.length>1?'s':'')+'.'+(r.message?' Attention : certains justificatifs n\'ont pas pu être intégrés.':''):(r.message||'Rien à exporter.'));
   }catch(e){toast('Export impossible : '+e.message)}
   finally{setBusy(false)}
 }
@@ -457,7 +458,7 @@ root.addEventListener('click',async e=>{
   if(a==='chooseroot'){const r=await A.cfg.chooseRoot();if(r&&r.cfg){S.cfg=r.cfg;S.data={};await load();render();refreshInbox();toast('Dossier enregistré.')}return}
   if(S.auth!=='ok')return;
   const l=id?find(id):null,st=store();
-  if(a==='exp-xlsx'||a==='exp-pdf'||a==='exp-all'){runExport(a.slice(4))}
+  if(a==='exp-xlsx'||a==='exp-pdf'||a==='exp-lines'||a==='exp-all'){runExport(a.slice(4))}
   else if(a==='openexp'){A.folder.open(S.soc,S.period[S.soc],'exports')}
   else if(a==='openfolder'){A.folder.open(S.soc,S.period[S.soc],'')}
   else if(a==='soc'){await switchTo(v,S.period[v])}

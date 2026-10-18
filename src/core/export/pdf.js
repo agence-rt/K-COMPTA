@@ -20,7 +20,16 @@ async function buildPdf(soc, periodId, data, readDoc) {
     if (l.doc) {
       let src = null, err = '';
       const buf = await readDoc(l);
-      if (buf) { try { src = await PDFDocument.load(buf, { ignoreEncryption: true }); } catch (e) { err = 'PDF illisible'; } } else err = 'fichier introuvable';
+      if (buf) {
+        try {
+          src = await PDFDocument.load(buf, { ignoreEncryption: true });
+          if (src.isEncrypted) { src = null; err = 'PDF protégé par mot de passe ou chiffré'; }
+          else {
+            // essai à blanc : copie vers un document jetable et enregistrement, pour écarter les PDF que pdf-lib ne sait pas recopier
+            const t = await PDFDocument.create(); (await t.copyPages(src, src.getPageIndices())).forEach(x => t.addPage(x)); await t.save();
+          }
+        } catch (e) { src = null; err = 'PDF non recopiable (' + String(e.message || e).slice(0, 60) + ')'; }
+      } else err = 'fichier introuvable';
       pieces.push({ it, src, err, pages: src ? src.getPageCount() : 1 });
     } else if (C.needsDoc(l)) missing.push(it);
   }
@@ -81,6 +90,8 @@ async function buildPdf(soc, periodId, data, readDoc) {
     first.drawRectangle({ x: 14, y: h - 24, width: w, height: 14, color: rgb(1, 1, 1), borderColor: RED, borderWidth: .7 });
     first.drawText(txt, { x: 19, y: h - 20, size: 8, font: fb, color: RED });
   }
-  return Buffer.from(await out.save());
+  const result = Buffer.from(await out.save());
+  result.skipped = pieces.filter(pc => !pc.src).map(pc => ({ n: pc.it.n, name: pc.it.l.doc.name, err: pc.err }));   // pièces remplacées par une page d'avertissement
+  return result;
 }
-module.exports = { buildPdf };
+module.exports = { buildPdf, wa };

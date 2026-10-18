@@ -39,3 +39,23 @@ test('PDF : justificatifs numérotés dans l\'ordre, pièces manquantes sur la p
   assert.strictEqual(await buildPdf('archi', '2026-09', C.blankPeriod('archi', '2026-09'), async () => null), null);
   assert.ok(a);
 });
+
+test('PDF justificatifs : un PDF illisible ou non recopiable ne bloque plus l\'export (page d\'avertissement)', async () => {
+  const { d } = sample();
+  const bad = await PDFDocument.create(); const pgx = bad.addPage([595, 842]);
+  const { PDFName, PDFNumber } = require('pdf-lib'); pgx.node.set(PDFName.of('Contents'), PDFNumber.of(5)); pgx.node.set(PDFName.of('Parent'), PDFNumber.of(7));
+  const docs = { [d.lines.find(l => l.label === 'FACT SGT').id]: Buffer.from(await bad.save()), [d.lines.find(l => l.label === 'VIR CLIENT').id]: Buffer.from('pas un pdf') };
+  const pdf = await buildPdf('archi', '2026-09', d, async l => docs[l.id] || null);
+  assert.ok(pdf && (await PDFDocument.load(pdf)).getPageCount() >= 3);
+  assert.strictEqual(pdf.skipped.length, 2);
+});
+
+test('PDF Lignes et TVA : résumé puis un tableau par compte', async () => {
+  const { buildLinesPdf } = require('../src/core/export/pdf-lines');
+  const { d } = sample();
+  const pdf = await buildLinesPdf('archi', '2026-09', d);
+  const out = await PDFDocument.load(pdf);
+  assert.ok(out.getPageCount() >= 3);           // résumé + Crédit Mutuel + Société Générale
+  const big = sample().d; for (let i = 0; i < 120; i++) { const l = C.makeLine({ date: '2026-09-' + String(1 + (i % 27)).padStart(2, '0'), label: 'LIGNE ' + i, bank: 'cm', debit: 10 + i }); C.setType(l, 'dep'); C.fillAll(l, 20); big.lines.push(l); }
+  assert.ok((await PDFDocument.load(await buildLinesPdf('archi', '2026-09', big))).getPageCount() >= 6);   // pagination
+});

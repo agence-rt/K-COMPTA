@@ -95,7 +95,7 @@ const assert = require('assert');
   console.log('ligne ADOBE enregistrée:', l.type, !!l.doc, l.vent.length);
   assert.strictEqual(l.type, 'dep'); assert.ok(l.doc); assert.strictEqual(l.vent[0].rate, 10); assert.strictEqual(l.vent[0].ht, 100);
   assert.ok(fs.existsSync(path.join(st.periodDir('archi', '2026-09'), 'periode.compta')));
-  const ex = fs.readdirSync(path.join(st.periodDir('archi', '2026-09'), 'exports')); console.log(ex); assert.strictEqual(ex.length, 2);
+  const ex = fs.readdirSync(path.join(st.periodDir('archi', '2026-09'), 'exports')); console.log(ex); assert.strictEqual(ex.length, 3);
   // rechargement : l'état revient du disque
   await page.reload(); await page.waitForSelector('tr.row'); assert.strictEqual(await page.locator('tr.row').count(), 50); assert.strictEqual(await page.locator('.chip .fn').count(), 3);
   console.log('erreurs page:', errs); assert.deepStrictEqual(errs, []);
