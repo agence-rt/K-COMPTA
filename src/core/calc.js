@@ -62,7 +62,7 @@
     if (!(l.type === 'dep' ? l.debit > 0 : l.credit > 0)) return { c: 'bad', t: 'Sens incohérent' };
     if (!l.vent.length) return { c: 'bad', t: 'À ventiler' };
     const r = remain(l);
-    if (r < -0.005 || (l.type === 'rec' && r > 0.005)) return { c: 'bad', t: 'Écart ' + Math.abs(r).toFixed(2).replace('.', ',') + ' €' };
+    if (r < -0.005) return { c: 'bad', t: 'Écart ' + Math.abs(r).toFixed(2).replace('.', ',') + ' €' };
     return { c: 'ok', t: 'Ventilée' };
   }
 

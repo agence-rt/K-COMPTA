@@ -52,6 +52,9 @@ const assert = require('assert');
   // classer une ligne en dépense, ajouter un justificatif
   const row = page.locator('tr.row', { has: page.locator('input[value="PAIEMENT CB ADOBE"]') }).first();
   await row.locator('[data-act=type][data-v=dep]').click();
+  await row.locator('select.rate').selectOption('10');
+  await row.locator('[data-act=expand]').click(); await page.locator('[data-f=vht]').first().fill('100'); await page.locator('[data-f=vht]').first().dispatchEvent('change');
+  await shot('2b-ventilation');
   await row.locator('[data-act=adddoc]').click();
   await page.waitForSelector('.chip .fn');
   await page.click('[data-act=tab][data-v=syn]'); console.log('synthèse:', (await page.textContent('.result')).replace(/\s+/g, ' ').slice(0, 160)); await shot('3-synthese');
@@ -62,7 +65,7 @@ const assert = require('assert');
   await page.waitForTimeout(1200);                                             // enregistrement automatique
   const d = st.load('archi', '2026-09'); const l = d.lines.find(x => x.label.includes('ADOBE'));
   console.log('ligne ADOBE enregistrée:', l.type, !!l.doc, l.vent.length);
-  assert.strictEqual(l.type, 'dep'); assert.ok(l.doc);
+  assert.strictEqual(l.type, 'dep'); assert.ok(l.doc); assert.strictEqual(l.vent[0].rate, 10); assert.strictEqual(l.vent[0].ht, 100);
   assert.ok(fs.existsSync(path.join(st.periodDir('archi', '2026-09'), 'periode.compta')));
   const ex = fs.readdirSync(path.join(st.periodDir('archi', '2026-09'), 'exports')); console.log(ex); assert.strictEqual(ex.length, 2);
   // rechargement : l'état revient du disque

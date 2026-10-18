@@ -198,14 +198,18 @@ body{padding:0!important}
 .gform{width:100%}.gform input{width:100%;box-sizing:border-box}
 
 /* Nature : dépense rouge, recette verte, hors TVA orange */
-.seg button[data-v=dep]{color:var(--bad);background:var(--bad-soft)}
-.seg button[data-v=rec]{color:var(--ok);background:var(--ok-soft)}
-.seg button[data-v=hors]{color:#B45309;background:#FDEBD3}
 .seg button[data-v=dep][aria-pressed=true]{background:#C62828;color:#fff}
 .seg button[data-v=rec][aria-pressed=true]{background:#2E7D32;color:#fff}
 .seg button[data-v=hors][aria-pressed=true]{background:#E67E22;color:#fff}
-@media (prefers-color-scheme: dark){:root:not([data-theme=light]) .seg button[data-v=hors]{background:#3a2a12;color:#F0A04B}}
 /* chiffres en écriture comptable */
 input.m,.mono,.big,.form .v b,.form .v small{font-variant-numeric:tabular-nums;letter-spacing:0}
 input.m{width:124px}
 .seg button{padding:5px 7px!important;font-size:11.5px!important}
+
+/* Nature : gris tant qu'aucun choix n'est fait ; la couleur n'apparaît qu'une fois le choix posé */
+.seg button{background:var(--surface2);color:var(--muted)}
+/* montants Débit / Crédit plus compacts */
+input.cell.m{width:84px;font-size:12px;padding:4px 6px}
+th.num{white-space:nowrap}
+select.rate{width:78px;padding:4px 4px;font-size:12px}
+button.ico.on{color:var(--accent);background:var(--accent-soft)}

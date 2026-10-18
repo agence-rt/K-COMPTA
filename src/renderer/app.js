@@ -127,7 +127,7 @@ function linesHTML(){
   const body=rows.map(rowHTML).join('');
   const sampleNote=st.sample?'<p class="note" style="margin:0 0 10px">Données d\'exemple.</p>':(st.real?'<p class="note" style="margin:0 0 10px">Lignes lues sur les 2 relevés du dossier A-TRAITER. Elles restent à classer et à ventiler. Un texte gris sous un libellé reprend une indication de TVA écrite sur le relevé.</p>':'');
   const table=st.lines.length?
-    '<div class="tw"><table class="t"><thead><tr><th>Date</th><th>Libellé</th>'+(banks.length>1?'<th>Compte</th>':'')+'<th class="num">Débit</th><th class="num">Crédit</th><th>Nature</th><th class="num">TVA</th><th>Justificatif</th><th>État</th><th><span class="sr" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody>'+(body||'<tr><td colspan="10" class="muted" style="padding:16px">Aucune ligne pour ce filtre.</td></tr>')+'</tbody></table></div>':
+    '<div class="tw"><table class="t"><thead><tr><th>Date</th><th>Libellé</th>'+(banks.length>1?'<th>Compte</th>':'')+'<th class="num">Débit</th><th class="num">Crédit</th><th>Nature</th><th>Taux TVA</th><th class="num">TVA</th><th>Justificatif</th><th>État</th><th><span class="sr" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody>'+(body||'<tr><td colspan="10" class="muted" style="padding:16px">Aucune ligne pour ce filtre.</td></tr>')+'</tbody></table></div>':
     '<div class="empty"><b>Aucune ligne pour '+esc(per().label)+'</b>Importez les relevés PDF, ou ajoutez les lignes à la main.</div>';
   return '<div class="accts">'+cards+'</div>'+sampleNote+
     '<div class="bar"><div class="flt">'+flt+'</div><div class="flt">'+bflt+'<button class="btn primary" data-act="addline">+ Ajouter une ligne</button></div></div>'+table;
@@ -141,12 +141,21 @@ function rowHTML(l){
     (banks.length>1?'<td><select class="cell" data-f="bank" data-id="'+l.id+'" aria-label="Compte">'+banks.map(b=>'<option value="'+b.id+'"'+(l.bank===b.id?' selected':'')+'>'+esc(b.name)+'</option>').join('')+'</select></td>':'')+
     '<td><input class="cell m" inputmode="decimal" data-f="debit" data-id="'+l.id+'" value="'+(l.debit?fmt(l.debit):'')+'" aria-label="Débit"></td>'+
     '<td><input class="cell m" inputmode="decimal" data-f="credit" data-id="'+l.id+'" value="'+(l.credit?fmt(l.credit):'')+'" aria-label="Crédit"></td>'+
-    '<td>'+seg+'</td><td class="num mono" id="tv-'+l.id+'"></td><td id="dc-'+l.id+'">'+docCell(l)+'</td>'+
+    '<td>'+seg+'</td><td>'+rateCell(l)+'</td><td class="num mono" id="tv-'+l.id+'"></td><td id="dc-'+l.id+'">'+docCell(l)+'</td>'+
     '<td><span class="pill" id="st-'+l.id+'"></span></td>'+
     '<td style="white-space:nowrap"><button class="ico" data-act="expand" data-id="'+l.id+'" aria-label="Ventilation TVA" aria-expanded="'+open+'"'+((l.type==='dep'||l.type==='rec')?'':' disabled')+' style="'+(open?'transform:rotate(180deg)':'')+'">'+IC.chev+'</button>'+
     '<button class="ico" data-act="delline" data-id="'+l.id+'" aria-label="Supprimer la ligne">'+IC.trash+'</button></td></tr>';
-  if(open)r+='<tr class="detail"><td colspan="'+(banks.length>1?10:9)+'">'+edHTML(l)+'</td></tr>';
+  if(open)r+='<tr class="detail"><td colspan="'+(banks.length>1?11:10)+'">'+edHTML(l)+'</td></tr>';
   return r;
+}
+function rateCell(l){
+  const ok=l.type==='dep'||l.type==='rec';
+  if(!ok)return '<select class="cell rate" disabled aria-label="Taux de TVA"><option>—</option></select>';
+  const rates=l.type==='dep'?RATES_DEP:RATES_REC,multi=l.vent.length>1,one=l.vent.length===1?l.vent[0].rate:null;
+  const opts=['<option value=""'+(!l.vent.length?' selected':'')+'>—</option>'].concat(rates.map(r=>'<option value="'+r+'"'+(one===r?' selected':'')+'>'+rl(r)+'</option>'));
+  if(multi)opts.push('<option value="multi" selected>Ventilée</option>');
+  else if(one!=null&&!rates.includes(one))opts.push('<option value="'+one+'" selected>'+rl(one)+'</option>');
+  return '<select class="cell rate" data-f="rate" data-id="'+l.id+'" aria-label="Taux de TVA">'+opts.join('')+'</select>';
 }
 function docCell(l){
   if(l.doc)return '<span class="chip">'+IC.clip+'<button class="fn lnk2" title="Ouvrir '+esc(l.doc.name)+'" data-act="opendoc" data-id="'+l.id+'">'+esc(l.doc.name)+'</button><button class="ico" style="padding:2px" data-act="rmdoc" data-id="'+l.id+'" aria-label="Retirer le justificatif">'+IC.x+'</button></span>';
@@ -159,7 +168,7 @@ function edHTML(l){
     '<td><input class="mono" inputmode="decimal" data-f="vtva" data-id="'+l.id+'" data-i="'+i+'" value="'+fmt(vTva(v))+'" aria-label="Montant de TVA"></td>'+
     '<td class="mono" id="vt-'+l.id+'-'+i+'" style="text-align:right"></td>'+
     '<td><button class="ico" data-act="rmvent" data-id="'+l.id+'" data-i="'+i+'" aria-label="Retirer ce taux">'+IC.x+'</button></td></tr>').join('');
-  return '<div class="ed"><div class="ed-h"><strong>'+(dep?'Dépense':'Recette')+'</strong> · montant TTC de la ligne : <span class="mono"><b id="ttc-'+l.id+'"></b></span>'+(dep?' · saisissez la base HT pour chaque taux, le reste est hors TVA.':' · la totalité doit être ventilée entre 10 % et 20 %.')+'</div>'+
+  return '<div class="ed"><div class="ed-h"><strong>'+(dep?'Dépense':'Recette')+'</strong> · montant TTC de la ligne : <span class="mono"><b id="ttc-'+l.id+'"></b></span>'+' · saisissez la base HT soumise à chaque taux : la part non ventilée est hors TVA.'+'</div>'+
     '<div class="scroll"><table class="vt"><thead><tr><th>Taux</th><th style="text-align:right">Base HT</th><th style="text-align:right">TVA</th><th style="text-align:right">TTC</th><th></th></tr></thead><tbody>'+vr+'</tbody></table></div>'+
     '<div class="ed-act"><button class="btn small" data-act="addvent" data-id="'+l.id+'">+ Ajouter un taux</button>'+
     '<button class="btn small" data-act="all" data-v="20" data-id="'+l.id+'">Tout à 20 %</button><button class="btn small" data-act="all" data-v="10" data-id="'+l.id+'">Tout à 10 %</button>'+
@@ -315,11 +324,11 @@ function refresh(){
     if(ef){
       const r=remain(l);
       if(r<-0.005){ef.className='msg bad';ef.textContent='La ventilation dépasse la ligne de '+fmt(-r)+'.'}
-      else if(l.type==='rec'&&r>0.005){ef.className='msg bad';ef.textContent='Reste à ventiler : '+fmt(r)+'.'}
       else if(r>0.005){ef.className='msg info';ef.textContent='Part hors TVA : '+fmt(r)+', non soumise à TVA.'}
       else{ef.className='msg ok';ef.textContent='Ligne entièrement ventilée.'}
     }
     const dc=$('#dc-'+l.id);if(dc)dc.innerHTML=docCell(l);
+    const rc=$('select.rate[data-id="'+l.id+'"]');if(rc&&document.activeElement!==rc)rc.outerHTML=rateCell(l);
   });
   const so=$('#synout');if(so)so.innerHTML=synOutHTML();
   const sc=$('#synchk');if(sc)sc.innerHTML=synChecksHTML();
@@ -362,7 +371,7 @@ setInterval(()=>{if(S.auth==='ok')refreshInbox()},30000);
 
 /* ---------- actions ---------- */
 function fillAll(l,rate){C.fillAll(l,rate)}
-function setType(l,v){C.setType(l,v);if(l.type==='dep'||l.type==='rec')S.expanded.add(l.id);else S.expanded.delete(l.id)}
+function setType(l,v){C.setType(l,v);S.expanded.delete(l.id)}
 async function switchTo(soc,period){
   await flushSave();
   S.soc=soc;S.period[soc]=period;S.filter='all';S.bankf='all';S.expanded.clear();
@@ -458,6 +467,7 @@ root.addEventListener('change',async e=>{
   else if(f==='period'){await switchTo(S.soc,t.value)}
   else if(f==='bankf'){S.bankf=t.value;render()}
   else if(f==='bank'&&l){l.bank=t.value;refresh()}
+  else if(f==='rate'&&l){if(t.value==='')l.vent=[];else if(t.value!=='multi'){const keep=l.vent[0]&&l.vent.length===1?l.vent[0]:null;fillAll(l,+t.value)}render()}
   else if(f==='vrate'&&l){const v=l.vent[+t.dataset.i];v.rate=+t.value;v.tva=null;render()}
   else if(f==='immo'&&l){l.immo=t.checked;refresh()}
 });
