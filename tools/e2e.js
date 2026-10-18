@@ -98,6 +98,13 @@ const assert = require('assert');
   await page.click('[data-act=tab][data-v=doc]'); await page.click('[data-act=auditdocs]'); await page.waitForSelector('#auditout .note');
   console.log('audit:', (await page.textContent('#auditout')).replace(/\s+/g, ' ').slice(0, 200)); await page.click('[data-act=tab][data-v=lines]');
   console.log('retrait / remplacement / nettoyage OK');
+  // panneau PDF ouvert : le volet société / période / dossier surveillé reste accessible
+  await page.waitForSelector('#viewer:not([hidden])');
+  assert.ok(await page.locator('.side').isVisible()); assert.ok(await page.locator('.side [data-f=year]').isVisible()); assert.ok(await page.locator('.side #watchinfo').count());
+  await page.locator('.ctx [data-act=soc][data-v=sci]').click(); await page.waitForSelector('.mhead h1:has-text("FAURIEL")');
+  await page.locator('.ctx [data-f=period]').selectOption({ index: 1 }); await page.waitForSelector('.mhead p:has-text("2")');
+  await page.locator('.ctx [data-act=soc][data-v=archi]').click(); await page.waitForSelector('.mhead h1:has-text("KOCHANSKI")');
+  console.log('société / période / surveillance accessibles avec le panneau ouvert');
   await page.click('[data-act=tab][data-v=syn]'); console.log('synthèse:', (await page.textContent('.result')).replace(/\s+/g, ' ').slice(0, 160)); await shot('3-synthese');
   await page.click('[data-act=tab][data-v=exp]');
   await page.click('[data-act=exp-all]'); await page.waitForSelector('#expout li');

@@ -249,8 +249,9 @@ select.cell[data-f=bank]{width:52px}
 .t td:last-child{width:62px}
 .pill{font-size:11px;padding:2px 7px}
 /* panneau ouvert : le volet société/période se replie pour donner la place au tableau */
-body.viewer-open .app{grid-template-columns:minmax(0,1fr)}
-body.viewer-open .side{display:none}
+body.viewer-open .app{grid-template-columns:196px minmax(0,1fr)}
+body.viewer-open .side{padding:10px;gap:12px}
+body.viewer-open .soc small{display:none}
 .code{font:10px/1.2 var(--mono);color:var(--muted);padding:0 4px;white-space:nowrap}
 
 .codec{font:10.5px/1.2 var(--mono);color:var(--muted);white-space:nowrap;padding:3px 6px!important;width:1%}
@@ -273,3 +274,10 @@ select.cell.bk option{color:#222;font-weight:400}
 .pill.act{cursor:pointer}
 .pill.act:hover{filter:brightness(.95);box-shadow:0 0 0 2px var(--bad-soft)}
 .pill.ok.act:hover{box-shadow:0 0 0 2px var(--ok-soft)}
+
+.auto{display:flex;gap:6px;align-items:center;font-size:12px;margin:0 0 4px;cursor:pointer}
+
+.ctx{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 22px 0}
+.ctx .sel{width:auto;min-width:0}
+.soc2{font:600 12px Arial,sans-serif;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.soc2[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}

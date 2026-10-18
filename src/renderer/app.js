@@ -122,7 +122,7 @@ function sideHTML(){
   const files=st.statements.length?'<ul class="files">'+st.statements.map((f,i)=>'<li>'+IC.pdf+'<button class="fn lnk2" title="Afficher '+esc(f.name)+'" data-act="openstmt" data-i="'+i+'">'+esc(f.name)+'</button>'+(f.src==='dropbox'?'<span class="pill">Dropbox</span>':'')+(f.info?'<span class="info">'+esc(f.info)+'</span>':'')+'</li>').join('')+'</ul>':'<p class="note" style="margin:0 0 8px">Aucun relevé pour cette période.</p>';
   const dbx=cfg.root?
     '<p style="margin:0 0 8px"><span class="pill ok">Dossier Dropbox trouvé</span></p><p style="margin:0 0 8px;font:12px/1.5 var(--mono);word-break:break-all">'+esc(cfg.root)+'\\AGOA-COMPTA\\A-TRAITER</p>'+
-    '<button class="btn small" data-act="scaninbox" id="scanbtn">'+(S.inbox?'Lire les '+S.inbox+' relevé'+(S.inbox>1?'s':'')+' à traiter':'Chercher les nouveaux relevés')+'</button>':
+    '<label class="auto"><input type="checkbox" data-act="autoinbox"'+(S.auto?' checked':'')+'> Importer automatiquement</label><p class="note" id="watchinfo" style="margin:2px 0 8px">'+esc(watchLabel())+'</p>'+'<button class="btn small" data-act="scaninbox" id="scanbtn">'+(S.inbox?'Lire les '+S.inbox+' relevé'+(S.inbox>1?'s':'')+' à traiter':'Chercher les nouveaux relevés')+'</button>':
     '<p style="margin:0 0 8px"><span class="pill bad">Dossier Dropbox introuvable</span></p><button class="btn small" data-act="chooseroot">Choisir le dossier…</button>';
   return '<div><h2>Société</h2>'+socs+'</div>'+
     '<div><h2>Période</h2><div style="display:grid;grid-template-columns:84px 1fr;gap:6px"><select class="sel" data-f="year" aria-label="Année">'+yopts+'</select><select class="sel" data-f="period" aria-label="Période">'+opts+'</select></div></div>'+
@@ -132,7 +132,11 @@ function sideHTML(){
 }
 function headHTML(){
   const s=SOC[S.soc],p=per();
-  return '<div class="mhead"><div><h1>'+esc(s.name)+'</h1><p>'+esc(p.label)+' · Déclaration '+esc(s.freqLabel.toLowerCase())+(s.siren?' · SIREN '+esc(s.siren)+' · mini-réel':'')+'</p></div><div class="mact"><div class="chips" id="chips"></div><button class="btn small" data-act="saveas" title="Enregistrer une copie du fichier .compta à l\'emplacement de votre choix">Enregistrer sous…</button><span class="saved" id="saved" title="Enregistrement automatique, avec 10 sauvegardes de secours">'+esc(savedLabel())+'</span></div></div>';
+  const y=yearOf(),yrs=[];for(let i=y-3;i<=new Date().getFullYear()+1;i++)yrs.push(i);
+  const ctx='<div class="ctx" role="group" aria-label="Société et période affichées">'+Object.keys(SOC).map(k=>'<button class="soc2" data-act="soc" data-v="'+k+'" aria-pressed="'+(S.soc===k)+'">'+esc(SOC[k].short)+'</button>').join('')+
+    '<select class="sel" data-f="year" aria-label="Année">'+yrs.map(v=>'<option value="'+v+'"'+(v===y?' selected':'')+'>'+v+'</option>').join('')+'</select>'+
+    '<select class="sel" data-f="period" aria-label="Période">'+C.periodsFor(S.soc,y).map(q=>'<option value="'+q.id+'"'+(q.id===S.period[S.soc]?' selected':'')+'>'+esc(q.label)+'</option>').join('')+'</select></div>';
+  return ctx+'<div class="mhead"><div><h1>'+esc(s.name)+'</h1><p>'+esc(p.label)+' · Déclaration '+esc(s.freqLabel.toLowerCase())+(s.siren?' · SIREN '+esc(s.siren)+' · mini-réel':'')+'</p></div><div class="mact"><div class="chips" id="chips"></div><button class="btn small" data-act="saveas" title="Enregistrer une copie du fichier .compta à l\'emplacement de votre choix">Enregistrer sous…</button><span class="saved" id="saved" title="Enregistrement automatique, avec 10 sauvegardes de secours">'+esc(savedLabel())+'</span></div></div>';
 }
 function tabsHTML(){
   const T=[['lines','Lignes bancaires'],['syn','Synthèse TVA'],['exp','Export'],['doc','Dossier AGOA-COMPTA'],['set','Réglages']];
@@ -414,7 +418,22 @@ A.openFile.onOpen(async p=>{if(S.auth==='ok'&&p)await switchTo(p.soc,p.period)})
 async function refreshInbox(){
   try{const r=await A.inbox.list();S.inbox=r.count;const b=$('#scanbtn');if(b&&!S.busy)b.textContent=S.inbox?'Lire les '+S.inbox+' relevé'+(S.inbox>1?'s':'')+' à traiter':'Chercher les nouveaux relevés'}catch(e){/* ignore */}
 }
-setInterval(()=>{if(S.auth==='ok')refreshInbox()},30000);
+/* lecture du dossier A-TRAITER : à la demande, ou automatiquement quand de nouveaux PDF y arrivent (surveillance toutes les 15 s) */
+try{S.auto=localStorage.getItem('agoa.auto')!=='0'}catch(e){S.auto=true}
+async function scanInbox(auto){
+  if(S.busy)return;
+  setBusy(true);
+  try{await flushSave();const r=await A.inbox.importAll();if(!r.reports.length){if(!auto)toast('Aucun relevé dans A-TRAITER.')}else await afterImport(r.reports)}
+  catch(x){toast((auto?'Lecture automatique impossible : ':'Lecture impossible : ')+x.message)}finally{setBusy(false)}
+}
+async function watchInbox(){
+  if(S.auth!=='ok')return;
+  await refreshInbox();S.checkedAt=new Date();const e=$('#watchinfo');if(e)e.textContent=watchLabel();
+  const a=document.activeElement;
+  if(S.auto&&S.inbox>0&&!S.busy&&!(a&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)))await scanInbox(true);
+}
+function watchLabel(){return S.auto?('Surveillance active'+(S.checkedAt?' · vérifié à '+S.checkedAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'')):'Surveillance désactivée'}
+setInterval(watchInbox,15000);
 
 /* ---------- actions ---------- */
 function fillAll(l,rate){C.fillAll(l,rate)}
@@ -505,8 +524,9 @@ root.addEventListener('click',async e=>{
     setBusy(true);try{await flushSave();const r=await A.statement.pick();if(r&&r.reports&&r.reports.length)await afterImport(r.reports)}catch(x){toast('Import impossible : '+x.message)}finally{setBusy(false)}
   }
   else if(a==='scaninbox'&&!S.busy){
-    setBusy(true);try{await flushSave();const r=await A.inbox.importAll();if(!r.reports.length)toast('Aucun relevé dans A-TRAITER.');else await afterImport(r.reports)}catch(x){toast('Lecture impossible : '+x.message)}finally{setBusy(false)}
+    await scanInbox(false);
   }
+  else if(a==='autoinbox'){S.auto=!S.auto;try{localStorage.setItem('agoa.auto',S.auto?'1':'0')}catch(e){}render();if(S.auto)refreshInbox()}
   else if(a==='copy'){
     const{D}=totals();
     const txt=['A1 '+D.A1,'08 base '+D.b08+' taxe '+D.t08,'9B base '+D.b9B+' taxe '+D.t9B,'16 '+D.L16,'19 '+D.L19,'20 '+D.L20,'22 '+D.L22,'23 '+D.L23,'TD '+D.TD].join('\n');
