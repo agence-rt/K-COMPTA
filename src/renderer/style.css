@@ -218,9 +218,13 @@ button.ico.on{color:var(--accent);background:var(--accent-soft)}
 :root{--vw:38vw}
 #viewer{position:fixed;top:0;right:0;bottom:0;width:var(--vw);background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;z-index:20;box-shadow:-6px 0 18px rgba(0,0,0,.08)}
 #viewer[hidden]{display:none}
-.vgrip{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:col-resize}
-.vgrip:hover{background:var(--accent-soft)}
-.vhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface2)}
+.vgrip{position:absolute;left:-6px;top:0;bottom:0;width:12px;cursor:col-resize;z-index:2;touch-action:none}
+.vgrip::after{content:"";position:absolute;left:5px;top:50%;width:2px;height:48px;margin-top:-24px;border-radius:2px;background:var(--line)}
+.vgrip:hover,.vgrip:focus-visible,body.vdrag .vgrip{background:var(--accent-soft);outline:0}
+.vgrip:hover::after,body.vdrag .vgrip::after{background:var(--accent)}
+body.vdrag{cursor:col-resize;user-select:none}
+body.vdrag #vframe{pointer-events:none}
+.vhead{flex-wrap:wrap;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface2)}
 .vhead strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vact{display:flex;gap:6px;align-items:center;flex:none}
 .vbody{flex:1;min-height:0;position:relative}

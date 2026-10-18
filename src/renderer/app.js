@@ -99,10 +99,25 @@ $('#vclose').addEventListener('click',hidePdf);
 $('#vtab').addEventListener('click',()=>{setOpen(true);if(!V.cur)emptyPdf();fillVsel()});
 $('#vsel').addEventListener('change',e=>{const l=(store().lines||[]).find(x=>x.doc&&x.doc.rel===e.target.value);if(l)showPdf(l.doc.rel,l.doc.name)});
 $('#vopen').addEventListener('click',()=>{if(V.cur)A.doc.open(V.cur.soc,V.cur.period,V.cur.rel)});
-(function(){const g=$('#vgrip');let drag=false;
-  g.addEventListener('mousedown',e=>{drag=true;e.preventDefault()});
-  window.addEventListener('mouseup',()=>{drag=false});
-  window.addEventListener('mousemove',e=>{if(!drag)return;const w=Math.min(Math.max(window.innerWidth-e.clientX,320),window.innerWidth-520);document.documentElement.style.setProperty('--vw',w+'px')}) })();
+/* largeur du volet : glisser la poignée (capture du pointeur, donc le PDF affiché ne bloque pas le geste), double-clic = largeur par défaut,
+   flèches gauche/droite au clavier, bouton « ⇔ » = largeurs prédéfinies ; la largeur est mémorisée. */
+(function(){
+  const g=$('#vgrip'),root=document.documentElement;
+  const bounds=()=>({min:Math.min(280,window.innerWidth*.5),max:Math.max(320,window.innerWidth-300)});
+  const setW=w=>{const b=bounds();w=Math.round(Math.min(Math.max(w,b.min),b.max));root.style.setProperty('--vw',w+'px');return w};
+  const save=w=>{try{localStorage.setItem('agoa.vw',String(w))}catch(e){}};
+  const cur=()=>$('#viewer').getBoundingClientRect().width||window.innerWidth*.38;
+  try{const w=+localStorage.getItem('agoa.vw');if(w>0)setW(w)}catch(e){}
+  window.addEventListener('resize',()=>setW(cur()));
+  let pid=null,raf=0,nextW=0;
+  g.addEventListener('pointerdown',e=>{pid=e.pointerId;g.setPointerCapture(pid);document.body.classList.add('vdrag');e.preventDefault()});
+  g.addEventListener('pointermove',e=>{if(pid===null)return;nextW=window.innerWidth-e.clientX;if(!raf)raf=requestAnimationFrame(()=>{raf=0;setW(nextW)})});
+  const end=()=>{if(pid===null)return;try{g.releasePointerCapture(pid)}catch(e){}pid=null;document.body.classList.remove('vdrag');save(Math.round(cur()))};
+  g.addEventListener('pointerup',end);g.addEventListener('pointercancel',end);g.addEventListener('lostpointercapture',end);
+  g.addEventListener('dblclick',()=>{root.style.removeProperty('--vw');try{localStorage.removeItem('agoa.vw')}catch(e){}});
+  g.addEventListener('keydown',e=>{const d=e.key==='ArrowLeft'?32:e.key==='ArrowRight'?-32:0;if(!d)return;e.preventDefault();save(setW(cur()+d))});
+  $('#vsize').addEventListener('click',()=>{const W=window.innerWidth,presets=[.3,.45,.65].map(f=>Math.round(W*f)),c=cur();const nx=presets.find(p=>p>c+8)||presets[0];save(setW(nx))});
+})();
 
 function render(){
   if(S.auth!=='ok'){root.innerHTML=gateHTML();return}

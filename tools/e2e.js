@@ -74,6 +74,18 @@ const assert = require('assert');
   await page.waitForSelector('.chip .fn');
   await page.waitForSelector('#viewer:not([hidden])'); assert.ok((await page.getAttribute('#vframe','src')).startsWith('blob:')); assert.ok(await page.locator('body.viewer-open').count());
   await page.waitForTimeout(500); await page.evaluate(() => window.scrollTo(0, 0)); await page.locator('tr.row.viewing').scrollIntoViewIfNeeded(); await shot('2c-panneau');
+  // largeur du volet : glisser la poignée (même au-dessus du PDF), mémorisation, double-clic = défaut
+  const vw = async () => Math.round((await page.locator('#viewer').boundingBox()).width);
+  const w0 = await vw(), gb = await page.locator('#vgrip').boundingBox(), gx = gb.x + gb.width / 2, gy = gb.y + 200;
+  await page.mouse.move(gx, gy); await page.mouse.down(); await page.mouse.move(gx - 120, gy, { steps: 6 }); await page.mouse.move(gx - 200, gy, { steps: 4 }); await page.mouse.up();
+  await page.waitForTimeout(150); const w1 = await vw(); assert.ok(w1 > w0 + 150, 'élargi ' + w0 + ' → ' + w1);
+  const gb2 = await page.locator('#vgrip').boundingBox(), x2 = gb2.x + gb2.width / 2;
+  await page.mouse.move(x2, gy); await page.mouse.down(); await page.mouse.move(x2 + 150, gy, { steps: 8 }); await page.mouse.up();      // le pointeur passe au-dessus du PDF
+  await page.waitForTimeout(150); const w2 = await vw(); assert.ok(w2 < w1 - 100, 'rétréci ' + w1 + ' → ' + w2);
+  assert.ok(+(await page.evaluate(() => localStorage.getItem('agoa.vw'))) > 0);
+  await page.click('#vsize'); await page.waitForTimeout(100); assert.notStrictEqual(await vw(), w2);
+  await page.locator('#vgrip').dblclick(); await page.waitForTimeout(100); assert.ok(Math.abs((await vw()) - Math.round(1320 * .38)) < 6);
+  console.log('largeur du volet OK', w0, w1, w2);
   // volet dépliable : replier, onglet visible, rouvrir, liste des justificatifs
   await page.click('#vclose'); assert.ok(await page.locator('#viewer[hidden]').count()); assert.ok(await page.locator('#vtab:not([hidden])').count());
   await page.click('#vtab'); await page.waitForSelector('#viewer:not([hidden])'); assert.ok((await page.locator('#vsel option').count()) >= 2);
