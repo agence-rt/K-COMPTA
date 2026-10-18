@@ -31,7 +31,7 @@ test('A-TRAITER : relevés puis factures, rapprochement automatique, codes, reno
   const ad = d.lines.find(l => l.label.includes('ADOBE'));
   assert.match(ad.code, /^2026-09-CM-\d+$/); assert.strictEqual(ad.doc.name, ad.code + '.pdf'); assert.strictEqual(ad.type, 'dep');
   assert.deepStrictEqual(ad.vent, [{ rate: 20, ht: 261.96, tva: null }]);
-  assert.strictEqual(C.lineState(ad).t, 'Ventilée');
+  assert.strictEqual(C.lineState(ad).t, 'TVA ok');
   assert.ok(fs.existsSync(st.absPath('archi', '2026-09', ad.doc.rel)));
   const vp = d.lines.find(l => l.label.includes('VISTAPRINT'));
   const s = C.lineState(vp); assert.strictEqual(s.t, 'À vérifier'); assert.match(s.why, /33,00/);
@@ -40,5 +40,8 @@ test('A-TRAITER : relevés puis factures, rapprochement automatique, codes, reno
   const codes = d.lines.map(l => l.code); assert.strictEqual(new Set(codes).size, codes.length);
   assert.strictEqual(codes.filter(c => c.startsWith('2026-09-SG-')).length, 3);
   // ligne sans justificatif : à vérifier (rouge) une fois classée
+  const fm = d.lines.find(l => l.label.includes('FREE MOBILE')); if (!fm.type) C.setType(fm, 'dep'); if (!fm.vent.length) C.fillAll(fm, 20); if (!fm.doc) fm.doc = { name: 'x.pdf', total: null }; assert.strictEqual(C.lineState(fm).t, 'TVA ok'); const h = fm.vent[0].ht / 2; fm.vent = [{ rate: 20, ht: h, tva: null }, { rate: 10, ht: h / 2, tva: null }]; assert.strictEqual(C.lineState(fm).t, 'Ventilée');
+  const vv = d.lines.find(l => l.label.includes('VISTAPRINT')); if (!vv.type) C.setType(vv, 'dep'); assert.strictEqual(C.lineState(vv).act, 'validate');
+  if (!vv.type) C.setType(vv, 'dep'); if (!vv.vent.length) C.fillAll(vv, 20); vv.valid = true; assert.strictEqual(C.lineState(vv).t, 'Validée'); assert.strictEqual(C.lineState(vv).c, 'ok'); vv.valid = false;
   const o = d.lines.find(l => l.label.includes('ORANGE')); C.setType(o, 'dep'); assert.strictEqual(C.lineState(o).t, 'À vérifier');
 });

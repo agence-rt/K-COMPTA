@@ -54,19 +54,22 @@
   const vTva = v => (v.tva != null ? v.tva : r2(v.ht * v.rate / 100));
   const vTTC = v => r2(v.ht + vTva(v));
   const remain = l => r2(lineTTC(l) - l.vent.reduce((s, v) => s + vTTC(v), 0));
-  const needsDoc = l => (l.type === 'dep' || l.type === 'rec') && !l.doc;
+  const needsDoc = l => (l.type === 'dep' || l.type === 'rec') && !l.doc && !l.valid;
 
   function lineState(l) {
     if (!l.type) return { c: 'todo', t: 'À classer' };
     if (l.type === 'hors') return { c: 'ok', t: 'Hors TVA' };
     if (!(l.type === 'dep' ? l.debit > 0 : l.credit > 0)) return { c: 'bad', t: 'Sens incohérent' };
-    if (l.doc && l.doc.total != null && Math.abs(l.doc.total - lineTTC(l)) > 0.005) return { c: 'bad', t: 'À vérifier', why: 'Montant du PDF (' + fmt(l.doc.total) + ' €) différent de la ligne (' + fmt(lineTTC(l)) + ' €).' };
+    const mismatch = l.doc && l.doc.total != null && Math.abs(l.doc.total - lineTTC(l)) > 0.005;
+    const why = mismatch ? 'Montant du PDF (' + fmt(l.doc.total) + ' €) différent de la ligne (' + fmt(lineTTC(l)) + ' €).' : !l.doc ? 'Justificatif manquant.' : '';
+    if (l.valid && (mismatch || !l.doc)) { if (l.vent.length && remain(l) >= -0.005) return { c: 'ok', t: 'Validée', why: 'Validée manuellement : ' + why + ' Cliquer pour annuler la validation.', act: 'validate' }; }
+    if (mismatch) return { c: 'bad', t: 'À vérifier', why: why + ' Cliquer pour valider la ligne.', act: 'validate' };
     if (!l.vent.length) return { c: 'bad', t: 'À ventiler' };
     const r = remain(l);
     if (r < -0.005) return { c: 'bad', t: 'Écart ' + Math.abs(r).toFixed(2).replace('.', ',') + ' €' };
-    // rapprochement avec le justificatif : absent ou montant différent => à vérifier
-    if (!l.doc) return { c: 'bad', t: 'À vérifier', why: 'Justificatif manquant.' };
-    return { c: 'ok', t: 'Ventilée' };
+    // rapprochement avec le justificatif : absent ou montant différent => à vérifier (validable à la main)
+    if (!l.doc) return { c: 'bad', t: 'À vérifier', why: 'Justificatif manquant. Cliquer pour valider la ligne sans justificatif.', act: 'validate' };
+    return l.vent.length > 1 ? { c: 'ok', t: 'Ventilée', why: 'Plusieurs taux de TVA saisis.' } : { c: 'ok', t: 'TVA ok' };
   }
 
   /* ---------- code unique de ligne : ANNEE-MOIS-BANQUE-N (ex. 2026-09-CM-12) ---------- */

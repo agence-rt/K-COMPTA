@@ -56,7 +56,13 @@ const assert = require('assert');
   assert.match(await vp.locator('td.codec').textContent(), /^2026-09-CM-\d+$/);
   assert.strictEqual((await vp.locator('[id^=st-]').textContent()).trim(), 'À vérifier'); assert.ok(await vp.locator('[id^=st-].bad').count());
   const fr = page.locator('tr.row', { has: page.locator('input[value="PRLV SEPA FREE MOBILE"]') });
-  assert.strictEqual((await fr.locator('[id^=st-]').textContent()).trim(), 'Ventilée'); assert.ok((await fr.locator('.chip .fn').textContent()).includes('2026-09-CM-'));
+  assert.strictEqual((await fr.locator('[id^=st-]').textContent()).trim(), 'TVA ok'); assert.ok((await fr.locator('.chip .fn').textContent()).includes('2026-09-CM-'));
+  const ad0 = page.locator('tr.row', { has: page.locator('input[value="PAIEMENT CB ADOBE"]') });
+  if ((await vp.locator('select.rate').inputValue()) === '') await vp.locator('select.rate').selectOption('20');
+  assert.strictEqual((await vp.locator('[id^=st-]').textContent()).trim(), 'À vérifier');
+  await vp.locator('[id^=st-]').click(); assert.strictEqual((await vp.locator('[id^=st-]').textContent()).trim(), 'Validée'); assert.ok(await vp.locator('[id^=st-].ok').count());
+  await vp.locator('[id^=st-]').click(); assert.strictEqual((await vp.locator('[id^=st-]').textContent()).trim(), 'À vérifier');
+  await vp.locator('[id^=st-]').click(); console.log('validation OK');
   console.log('rapprochements OK'); await shot('2a-rapprochement');
   // classer une ligne en dépense, ajouter un justificatif
   const row = page.locator('tr.row', { has: page.locator('input[value="PAIEMENT CB ADOBE"]') }).first();

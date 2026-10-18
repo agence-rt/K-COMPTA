@@ -185,7 +185,7 @@ function rowHTML(l){
     '<td><input class="cell m" inputmode="decimal" data-f="debit" data-id="'+l.id+'" value="'+(l.debit?fmt(l.debit):'')+'" aria-label="Débit"></td>'+
     '<td><input class="cell m" inputmode="decimal" data-f="credit" data-id="'+l.id+'" value="'+(l.credit?fmt(l.credit):'')+'" aria-label="Crédit"></td>'+
     '<td>'+seg+'</td><td>'+rateCell(l)+'</td><td class="num mono" id="tv-'+l.id+'"></td><td id="dc-'+l.id+'">'+docCell(l)+'</td>'+
-    '<td><span class="pill" id="st-'+l.id+'"></span></td>'+
+    '<td><span class="pill" id="st-'+l.id+'" data-id="'+l.id+'"></span></td>'+
     '<td style="white-space:nowrap"><button class="ico" data-act="expand" data-id="'+l.id+'" aria-label="Ventilation TVA" aria-expanded="'+open+'"'+((l.type==='dep'||l.type==='rec')?'':' disabled')+' style="'+(open?'transform:rotate(180deg)':'')+'">'+IC.chev+'</button>'+
     '<button class="ico" data-act="delline" data-id="'+l.id+'" aria-label="Supprimer la ligne">'+IC.trash+'</button></td></tr>';
   if(open)r+='<tr class="detail"><td colspan="'+(banks.length>1?12:11)+'">'+edHTML(l)+'</td></tr>';
@@ -358,7 +358,7 @@ function refresh(){
   });
   st.lines.forEach(l=>{
     const s=lineState(l),e=$('#st-'+l.id);
-    if(e){e.className='pill '+s.c;e.textContent=s.t;e.title=s.why||''}
+    if(e){e.className='pill '+s.c+(s.act?' act':'');e.textContent=s.t;e.title=s.why||'';if(s.act){e.setAttribute('data-act','validate');e.setAttribute('role','button');e.tabIndex=0}else{e.removeAttribute('data-act');e.removeAttribute('role');e.removeAttribute('tabindex')}}
     const tv=$('#tv-'+l.id);
     if(tv){const sum=l.vent.reduce((a,v)=>a+vTva(v),0);tv.textContent=(l.type==='dep'||l.type==='rec')&&l.vent.length?fmt(sum):'—';tv.title=l.type==='dep'?'TVA déductible':l.type==='rec'?'TVA collectée':''}
     const ttc=$('#ttc-'+l.id);if(ttc)ttc.textContent=fmt(lineTTC(l));
@@ -474,11 +474,12 @@ root.addEventListener('click',async e=>{
   else if(a==='adddoc'&&l){
     await flushSave();
     const r=await A.doc.pick(S.soc,S.period[S.soc],{code:l.code,date:l.date,label:l.label});
-    if(r&&r.doc){l.doc=r.doc;render();await showPdf(r.doc.rel,r.doc.name)}
+    if(r&&r.doc){l.doc=r.doc;l.valid=false;render();await showPdf(r.doc.rel,r.doc.name)}
   }
   else if(a==='opendoc'&&l&&l.doc){await showPdf(l.doc.rel,l.doc.name)}
   else if(a==='openstmt'){const f=st.statements[+b.dataset.i];if(f&&f.rel)await showPdf(f.rel,f.name)}
-  else if(a==='rmdoc'&&l){l.doc=null;render()}
+  else if(a==='rmdoc'&&l){l.doc=null;l.valid=false;render()}
+  else if(a==='validate'&&l){l.valid=!l.valid;render()}
   else if(a==='delline'&&l){st.lines=st.lines.filter(x=>x.id!==id);S.expanded.delete(id);render()}
   else if(a==='addline'){
     const nl=C.makeLine({date:per().start,bank:S.bankf!=='all'?S.bankf:SOC[S.soc].banks[0].id});
@@ -502,8 +503,8 @@ root.addEventListener('input',e=>{
   const st=store(),l=t.dataset.id?find(t.dataset.id):null,i=+t.dataset.i;
   if(f==='label'&&l)l.label=t.value;
   else if(f==='date'&&l){l.date=t.value;C.recode(st,l);const cd=document.getElementById('cd-'+l.id);if(cd)cd.textContent=l.code||''}
-  else if(f==='debit'&&l){l.debit=parse(t.value)}
-  else if(f==='credit'&&l){l.credit=parse(t.value)}
+  else if(f==='debit'&&l){l.debit=parse(t.value);l.valid=false}
+  else if(f==='credit'&&l){l.credit=parse(t.value);l.valid=false}
   else if(f==='vht'&&l){const v=l.vent[i];v.ht=parse(t.value);v.tva=null;const x=$('[data-f="vtva"][data-id="'+l.id+'"][data-i="'+i+'"]');if(x)x.value=fmt(vTva(v))}
   else if(f==='vtva'&&l){l.vent[i].tva=parse(t.value)}
   else if(f==='open'||f==='close'){st.accounts[t.dataset.bank][f]=parse(t.value)}

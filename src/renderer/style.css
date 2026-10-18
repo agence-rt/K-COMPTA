@@ -269,3 +269,7 @@ select.cell.bk{font-weight:700}
 select.cell.bk-sg{color:#C62828}
 select.cell.bk-cm{color:#1565C0}
 select.cell.bk option{color:#222;font-weight:400}
+
+.pill.act{cursor:pointer}
+.pill.act:hover{filter:brightness(.95);box-shadow:0 0 0 2px var(--bad-soft)}
+.pill.ok.act:hover{box-shadow:0 0 0 2px var(--ok-soft)}
