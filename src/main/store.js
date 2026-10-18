@@ -11,7 +11,26 @@ const { analyseInvoice, matchInvoice, ventFrom } = require('../core/parse/invoic
 
 const fmtE = n => C.fmt(n) + ' €';
 const mkdir = p => fs.mkdirSync(p, { recursive: true });
-function writeAtomic(file, content) { mkdir(path.dirname(file)); const t = file + '.tmp'; fs.writeFileSync(t, content); fs.renameSync(t, file); }
+const sleep = ms => { try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); } catch (e) { /* ignore */ } };
+/** Réessaie une opération de fichier : Dropbox, l'antivirus ou l'indexeur verrouillent brièvement les fichiers sous Windows (EPERM, EBUSY, EACCES). */
+function retryFs(fn, tries = 8) {
+  for (let i = 0; ; i++) {
+    try { return fn(); } catch (e) {
+      if (i >= tries - 1 || !['EPERM', 'EBUSY', 'EACCES', 'EAGAIN'].includes(e.code)) throw e;
+      sleep(60 * (i + 1));
+    }
+  }
+}
+/** Écrit un fichier sans jamais le laisser à moitié écrit. Le renommage est réessayé ; s'il reste refusé (fichier tenu par Dropbox), on écrit directement dans le fichier. */
+function writeAtomic(file, content) {
+  mkdir(path.dirname(file));
+  const t = file + '.tmp';
+  try {
+    retryFs(() => fs.writeFileSync(t, content));
+    try { retryFs(() => fs.renameSync(t, file), 5); return; } catch (e) { /* repli ci-dessous */ }
+    retryFs(() => fs.writeFileSync(file, content));
+  } finally { try { fs.unlinkSync(t); } catch (e) { /* ignore */ } }
+}
 function uniqueName(dir, name) {
   const ext = path.extname(name), base = path.basename(name, ext); let n = name, i = 1;
   while (fs.existsSync(path.join(dir, n))) n = base + '-' + (++i) + ext;
@@ -65,8 +84,8 @@ class Store {
     const name = uniqueName(dir, base + '.pdf');
     const buf = fs.readFileSync(srcPath);
     let a = null; try { a = await analyseInvoice(buf); } catch (e) { /* PDF non lisible : rangé quand même */ }
-    fs.writeFileSync(path.join(dir, name), buf);
-    if (move) { try { fs.unlinkSync(srcPath); } catch (e) { /* ignore */ } }
+    retryFs(() => fs.writeFileSync(path.join(dir, name), buf));
+    if (move) { try { retryFs(() => fs.unlinkSync(srcPath), 4); } catch (e) { /* ignore */ } }
     return { name, original: path.basename(srcPath), rel: path.join('justificatifs', name),
       total: a && a.total != null ? a.total : null, ht: a ? a.ht : null, issuer: a ? a.issuer : null, docDate: a ? a.date : null };
   }
@@ -95,14 +114,14 @@ class Store {
       const data = this.load(parsed.soc, part.period);
       const dir = this.periodDir(parsed.soc, part.period), relDir = path.join(dir, 'releves'); mkdir(relDir);
       const dest = fs.existsSync(path.join(relDir, name)) ? null : name;
-      if (dest) fs.copyFileSync(filePath, path.join(relDir, dest));
+      if (dest) retryFs(() => fs.copyFileSync(filePath, path.join(relDir, dest)));
       const added = mergePart(data, parsed, part, { name, rel: path.join('releves', name), src: fromInbox ? 'dropbox' : 'pc' });
       if (added) this.save(parsed.soc, part.period, data);
       rep.parts.push({ period: part.period, lines: part.lines.length, added });
     }
     rep.ok = true;
     rep.checked = parsed.issues.length === 0;
-    if (fromInbox && rep.ok) { try { fs.unlinkSync(filePath); rep.moved = true; } catch (e) { rep.issues.push('Le relevé n\'a pas pu être retiré de A-TRAITER : ' + e.message); } }
+    if (fromInbox && rep.ok) { try { retryFs(() => fs.unlinkSync(filePath), 4); rep.moved = true; } catch (e) { rep.issues.push('Le relevé n\'a pas pu être retiré de A-TRAITER : ' + e.message); } }
     return rep;
   }
 
@@ -150,4 +169,4 @@ class Store {
     return out;
   }
 }
-module.exports = { Store, uniqueName, readComptaFile, FORMAT };
+module.exports = { Store, uniqueName, readComptaFile, FORMAT, writeAtomic };

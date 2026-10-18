@@ -60,25 +60,40 @@ const IC={
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{t.hidden=true},3600)}
 
 /* ---------- panneau PDF (à droite) ---------- */
-const V={cur:null,url:null};
+const V={cur:null,url:null,open:false};
+function setOpen(o){
+  V.open=!!o;$('#viewer').hidden=!V.open;$('#vtab').hidden=V.open;document.body.classList.toggle('viewer-open',V.open);
+  try{localStorage.setItem('agoa.viewer',V.open?'1':'0')}catch(e){}
+}
+function fillVsel(){
+  const sel=$('#vsel'),st=store();if(!sel)return;
+  const docs=(st&&st.lines||[]).filter(l=>l.doc).sort((a,b)=>(a.code||'')<(b.code||'')?-1:1);
+  sel.innerHTML='<option value="">'+(docs.length?'Choisir un justificatif…':'Aucun justificatif')+'</option>'+docs.map(l=>'<option value="'+esc(l.doc.rel)+'"'+(V.cur&&V.cur.rel===l.doc.rel?' selected':'')+'>'+esc((l.code||'')+' · '+(l.label||'').slice(0,28))+'</option>').join('');
+  sel.disabled=!docs.length;
+}
+function emptyPdf(){
+  const fr=$('#vframe'),msg=$('#vmsg');fr.hidden=true;fr.removeAttribute('src');
+  $('#vtitle').textContent='Justificatifs';$('#vopen').disabled=true;
+  msg.hidden=false;msg.className='vmsg muted';msg.textContent='Cliquez sur le nom d\'un justificatif dans le tableau, ou choisissez-en un dans la liste ci-dessus.';
+}
 async function showPdf(rel,name){
   const fr=$('#vframe'),msg=$('#vmsg');
   V.cur={soc:S.soc,period:S.period[S.soc],rel,name};
-  $('#vtitle').textContent=name;$('#viewer').hidden=false;document.body.classList.add('viewer-open');
+  $('#vtitle').textContent=name;$('#vopen').disabled=false;setOpen(true);
   msg.hidden=true;
   try{
     const buf=await A.doc.read(V.cur.soc,V.cur.period,rel);
     if(V.url)URL.revokeObjectURL(V.url);
     V.url=URL.createObjectURL(new Blob([buf],{type:'application/pdf'}));
     fr.src=V.url;fr.hidden=false;
-  }catch(e){fr.hidden=true;fr.removeAttribute('src');msg.hidden=false;msg.textContent='Document illisible : '+e.message}
+  }catch(e){fr.hidden=true;fr.removeAttribute('src');msg.hidden=false;msg.className='vmsg';msg.textContent='Document illisible : '+e.message}
   render();
 }
-function hidePdf(){
-  V.cur=null;$('#viewer').hidden=true;document.body.classList.remove('viewer-open');
-  $('#vframe').removeAttribute('src');if(V.url){URL.revokeObjectURL(V.url);V.url=null}render();
-}
+/* replie le volet (le document affiché est conservé) */
+function hidePdf(){setOpen(false)}
 $('#vclose').addEventListener('click',hidePdf);
+$('#vtab').addEventListener('click',()=>{setOpen(true);if(!V.cur)emptyPdf();fillVsel()});
+$('#vsel').addEventListener('change',e=>{const l=(store().lines||[]).find(x=>x.doc&&x.doc.rel===e.target.value);if(l)showPdf(l.doc.rel,l.doc.name)});
 $('#vopen').addEventListener('click',()=>{if(V.cur)A.doc.open(V.cur.soc,V.cur.period,V.cur.rel)});
 (function(){const g=$('#vgrip');let drag=false;
   g.addEventListener('mousedown',e=>{drag=true;e.preventDefault()});
@@ -92,7 +107,7 @@ function render(){
   '<span class="ttl"><strong>AGOA COMPTA</strong> — '+esc(SOC[S.soc].name)+'</span>'+
   userChip()+'</div>'+
   '<div class="app"><aside class="side">'+sideHTML()+'</aside><main class="main">'+headHTML()+tabsHTML()+'<div id="pane">'+paneHTML()+'</div></main></div></div>';
-  refresh();
+  refresh();fillVsel();
 }
 function sideHTML(){
   const st=store(),cfg=S.cfg||{};
@@ -153,7 +168,7 @@ function linesHTML(){
   const body=rows.map(rowHTML).join('');
   const sampleNote=st.sample?'<p class="note" style="margin:0 0 10px">Données d\'exemple.</p>':(st.real?'<p class="note" style="margin:0 0 10px">Lignes lues sur les 2 relevés du dossier A-TRAITER. Elles restent à classer et à ventiler. Un texte gris sous un libellé reprend une indication de TVA écrite sur le relevé.</p>':'');
   const table=st.lines.length?
-    '<div class="tw"><table class="t"><thead><tr><th>Date</th><th>Libellé</th>'+(banks.length>1?'<th>Compte</th>':'')+'<th class="num">Débit</th><th class="num">Crédit</th><th>Nature</th><th>Taux TVA</th><th class="num">TVA</th><th>Justificatif</th><th>État</th><th><span class="sr" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody>'+(body||'<tr><td colspan="10" class="muted" style="padding:16px">Aucune ligne pour ce filtre.</td></tr>')+'</tbody></table></div>':
+    '<div class="tw"><table class="t"><thead><tr><th>Code</th><th>Date</th><th>Libellé</th>'+(banks.length>1?'<th>Compte</th>':'')+'<th class="num">Débit</th><th class="num">Crédit</th><th>Nature</th><th>Taux TVA</th><th class="num">TVA</th><th>Justificatif</th><th>État</th><th><span class="sr" style="position:absolute;left:-9999px">Actions</span></th></tr></thead><tbody>'+(body||'<tr><td colspan="11" class="muted" style="padding:16px">Aucune ligne pour ce filtre.</td></tr>')+'</tbody></table></div>':
     '<div class="empty"><b>Aucune ligne pour '+esc(per().label)+'</b>Importez les relevés PDF, ou ajoutez les lignes à la main.</div>';
   return '<div class="accts">'+cards+'</div>'+sampleNote+
     '<div class="bar"><div class="flt">'+flt+'</div><div class="flt">'+bflt+'<button class="btn primary" data-act="addline">+ Ajouter une ligne</button></div></div>'+table;
@@ -162,7 +177,7 @@ function rowHTML(l){
   const open=S.expanded.has(l.id)&&(l.type==='dep'||l.type==='rec');
   const banks=SOC[S.soc].banks;
   const seg='<div class="seg" role="group" aria-label="Nature de la ligne">'+[['dep','Dépense'],['rec','Recette'],['hors','Hors TVA']].map(t=>'<button data-act="type" data-id="'+l.id+'" data-v="'+t[0]+'" aria-pressed="'+(l.type===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
-  let r='<tr class="row'+(V.cur&&l.doc&&l.doc.rel===V.cur.rel?' viewing':'')+'"><td><input class="cell dt" type="date" data-f="date" data-id="'+l.id+'" value="'+esc(l.date)+'" aria-label="Date"><div class="code" title="Code unique de la ligne : nom du justificatif rangé dans Dropbox">'+esc(l.code||'')+'</div></td>'+
+  let r='<tr class="row'+(V.cur&&l.doc&&l.doc.rel===V.cur.rel?' viewing':'')+'"><td class="codec" id="cd-'+l.id+'" title="Code unique de la ligne : nom du justificatif rangé dans Dropbox">'+esc(l.code||'')+'</td><td><input class="cell dt" type="date" data-f="date" data-id="'+l.id+'" value="'+esc(l.date)+'" aria-label="Date"></td>'+
     '<td><input class="cell lbl" data-f="label" data-id="'+l.id+'" value="'+esc(l.label)+'" placeholder="Libellé du relevé" aria-label="Libellé">'+(l.hint?'<div class="hint">'+esc(l.hint.text)+'</div>':'')+'</td>'+
     (banks.length>1?'<td><select class="cell" data-f="bank" data-id="'+l.id+'" aria-label="Compte">'+banks.map(b=>'<option value="'+b.id+'" title="'+esc(b.name)+'"'+(l.bank===b.id?' selected':'')+'>'+b.id.toUpperCase()+'</option>').join('')+'</select></td>':'')+
     '<td><input class="cell m" inputmode="decimal" data-f="debit" data-id="'+l.id+'" value="'+(l.debit?fmt(l.debit):'')+'" aria-label="Débit"></td>'+
@@ -171,7 +186,7 @@ function rowHTML(l){
     '<td><span class="pill" id="st-'+l.id+'"></span></td>'+
     '<td style="white-space:nowrap"><button class="ico" data-act="expand" data-id="'+l.id+'" aria-label="Ventilation TVA" aria-expanded="'+open+'"'+((l.type==='dep'||l.type==='rec')?'':' disabled')+' style="'+(open?'transform:rotate(180deg)':'')+'">'+IC.chev+'</button>'+
     '<button class="ico" data-act="delline" data-id="'+l.id+'" aria-label="Supprimer la ligne">'+IC.trash+'</button></td></tr>';
-  if(open)r+='<tr class="detail"><td colspan="'+(banks.length>1?11:10)+'">'+edHTML(l)+'</td></tr>';
+  if(open)r+='<tr class="detail"><td colspan="'+(banks.length>1?12:11)+'">'+edHTML(l)+'</td></tr>';
   return r;
 }
 function rateCell(l){
@@ -400,7 +415,7 @@ function fillAll(l,rate){C.fillAll(l,rate)}
 function setType(l,v){C.setType(l,v);S.expanded.delete(l.id)}
 async function switchTo(soc,period){
   await flushSave();
-  if(V.cur&&(V.cur.soc!==soc||V.cur.period!==period)){V.cur=null;$('#viewer').hidden=true;document.body.classList.remove('viewer-open');$('#vframe').removeAttribute('src')}
+  if(V.cur&&(V.cur.soc!==soc||V.cur.period!==period)){V.cur=null;if(V.url){URL.revokeObjectURL(V.url);V.url=null}emptyPdf()}
   S.soc=soc;S.period[soc]=period;S.filter='all';S.bankf='all';S.expanded.clear();
   await load();render();
 }
@@ -482,7 +497,7 @@ root.addEventListener('input',e=>{
   const t=e.target,f=t.dataset.f;if(!f||S.auth!=='ok')return;
   const st=store(),l=t.dataset.id?find(t.dataset.id):null,i=+t.dataset.i;
   if(f==='label'&&l)l.label=t.value;
-  else if(f==='date'&&l){l.date=t.value;C.recode(st,l);const cd=t.parentNode.querySelector('.code');if(cd)cd.textContent=l.code||''}
+  else if(f==='date'&&l){l.date=t.value;C.recode(st,l);const cd=document.getElementById('cd-'+l.id);if(cd)cd.textContent=l.code||''}
   else if(f==='debit'&&l){l.debit=parse(t.value)}
   else if(f==='credit'&&l){l.credit=parse(t.value)}
   else if(f==='vht'&&l){const v=l.vent[i];v.ht=parse(t.value);v.tva=null;const x=$('[data-f="vtva"][data-id="'+l.id+'"][data-i="'+i+'"]');if(x)x.value=fmt(vTva(v))}
@@ -505,5 +520,6 @@ root.addEventListener('change',async e=>{
   else if(f==='immo'&&l){l.immo=t.checked;refresh()}
 });
 
+try{if(localStorage.getItem('agoa.viewer')==='1'){setOpen(true);emptyPdf()}else setOpen(false)}catch(e){setOpen(false)}
 start();
 })();

@@ -9,9 +9,11 @@
 </head>
 <body>
 <div id="root"></div>
+<button id="vtab" class="vtab" hidden title="Afficher les justificatifs" aria-label="Afficher le volet des justificatifs">‹ Justificatifs</button>
 <aside id="viewer" hidden aria-label="Visionneuse PDF">
   <div class="vgrip" id="vgrip" title="Glisser pour redimensionner"></div>
-  <div class="vhead"><strong id="vtitle">Document</strong><span class="vact"><button class="btn small" id="vopen">Ouvrir à part</button><button class="ico" id="vclose" aria-label="Fermer le panneau">✕</button></span></div>
+  <div class="vhead"><strong id="vtitle">Document</strong><span class="vact"><button class="btn small" id="vopen">Ouvrir à part</button><button class="ico" id="vclose" aria-label="Replier le volet" title="Replier le volet">›</button></span></div>
+  <div class="vsel"><select id="vsel" aria-label="Justificatifs de la période"></select></div>
   <div class="vbody"><iframe id="vframe" title="Document PDF"></iframe><p class="vmsg" id="vmsg" hidden></p></div>
 </aside>
 <div id="toast" role="status" hidden></div>

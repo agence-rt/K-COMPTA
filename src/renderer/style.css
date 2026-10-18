@@ -252,3 +252,12 @@ select.cell[data-f=bank]{width:52px}
 body.viewer-open .app{grid-template-columns:minmax(0,1fr)}
 body.viewer-open .side{display:none}
 .code{font:10px/1.2 var(--mono);color:var(--muted);padding:0 4px;white-space:nowrap}
+
+.codec{font:10.5px/1.2 var(--mono);color:var(--muted);white-space:nowrap;padding:3px 6px!important;width:1%}
+.t th:first-child{width:1%;white-space:nowrap}
+.vtab{position:fixed;right:0;top:50%;transform:translateY(-50%);writing-mode:vertical-rl;z-index:19;background:var(--accent);color:#fff;border:0;border-radius:8px 0 0 8px;padding:12px 6px;font:600 12px Arial,sans-serif;cursor:pointer;box-shadow:-2px 2px 8px rgba(0,0,0,.15)}
+.vtab[hidden]{display:none}
+.vtab:hover{filter:brightness(1.08)}
+.vsel{padding:6px 12px;border-bottom:1px solid var(--line);background:var(--surface2)}
+.vsel select{width:100%;font:12px Arial,sans-serif;padding:4px}
+.vmsg.muted{color:var(--muted)}
