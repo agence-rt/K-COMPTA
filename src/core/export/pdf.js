@@ -1,7 +1,7 @@
 /* Compilation des justificatifs en un seul PDF : page de garde (résumé TVA, pièces manquantes), index, puis les
    justificatifs numérotés dans l'ordre : compte bancaire, dépenses, recettes, hors TVA, puis date. */
 'use strict';
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb } = require('@cantoo/pdf-lib');
 const C = require('../calc');
 const { SOC, fmt, fmt0, frFull, TYPE_SHORT } = C;
 
@@ -9,7 +9,7 @@ const wa = s => String(s == null ? '' : s).replace(/[  ]/g, ' ').replace(/[�
   .split('').map(ch => { const c = ch.charCodeAt(0); return c < 32 ? ' ' : (c <= 126 || (c >= 160 && c <= 255)) ? ch : (c === 0x20ac ? ch : '?'); }).join('');
 
 /** readDoc(ligne) rend le contenu du justificatif (Buffer) ou null. */
-async function buildPdf(soc, periodId, data, readDoc) {
+async function buildPdf(soc, periodId, data, readDoc, rasterize) {
   const s = SOC[soc], p = C.periodInfo(soc, periodId), model = C.exportModel(data, soc), { D } = C.totals(data);
   const out = await PDFDocument.create();
   const f = await out.embedFont(StandardFonts.Helvetica), fb = await out.embedFont(StandardFonts.HelveticaBold);
@@ -21,16 +21,26 @@ async function buildPdf(soc, periodId, data, readDoc) {
       let src = null, err = '';
       const buf = await readDoc(l);
       if (buf) {
-        try {
-          src = await PDFDocument.load(buf, { ignoreEncryption: true });
-          if (src.isEncrypted) { src = null; err = 'PDF protégé par mot de passe ou chiffré'; }
-          else {
-            // essai à blanc : copie vers un document jetable et enregistrement, pour écarter les PDF que pdf-lib ne sait pas recopier
-            const t = await PDFDocument.create(); (await t.copyPages(src, src.getPageIndices())).forEach(x => t.addPage(x)); await t.save();
+        // Chargement tolérant : les PDF protégés par un mot de passe « propriétaire » (impression/copie interdites, mais ouverture libre)
+        // sont déchiffrés avec le mot de passe vide ; les PDF abîmés (fin de fichier tronquée…) sont relus avec les réglages les plus souples.
+        const tries = [{ password: '' }, { password: '', throwOnInvalidObject: false, updateMetadata: false }];
+        for (const o of tries) {
+          try {
+            src = await PDFDocument.load(buf, o);
+            const t = await PDFDocument.create(); (await t.copyPages(src, src.getPageIndices())).forEach(x => t.addPage(x)); await t.save();   // essai à blanc
+            err = ''; break;
+          } catch (e) {
+            src = null; const m = String(e.message || e);
+            err = /password/i.test(m) ? 'PDF protégé par un mot de passe d\'ouverture : à réenregistrer sans mot de passe' : 'PDF non recopiable (' + m.slice(0, 60) + ')';
+            if (/password/i.test(m)) break;
           }
-        } catch (e) { src = null; err = 'PDF non recopiable (' + String(e.message || e).slice(0, 60) + ')'; }
+        }
       } else err = 'fichier introuvable';
-      pieces.push({ it, src, err, pages: src ? src.getPageCount() : 1 });
+      let images = null;
+      if (!src && buf && rasterize && !/mot de passe d'ouverture/.test(err)) {      // dernier recours : pages dessinées puis insérées comme images
+        try { const r = await rasterize(buf); if (r && r.length) { images = r; err = ''; } } catch (e) { err += ' · rendu image impossible (' + String(e.message || e).slice(0, 40) + ')'; }
+      }
+      pieces.push({ it, src, images, err, pages: src ? src.getPageCount() : images ? images.length : 1 });
     } else if (C.needsDoc(l)) missing.push(it);
   }
   if (!pieces.length) return null;
@@ -72,7 +82,7 @@ async function buildPdf(soc, periodId, data, readDoc) {
       const it = pc.it, l = it.l;
       T(String(it.n), 40, y, 9); T(frFull(l.date), 66, y, 9); T(fit(l.label || '(sans libellé)', f, 9, 200), 120, y, 9);
       T(TYPE_SHORT[it.type] + ' · ' + bshort(it), 330, y, 9); TR((l.debit > 0 ? '-' : '+') + fmt(C.lineTTC(l)) + '\u00a0€', 515, y, 9);
-      TR(pc.src ? String(pc.start) + (pc.pages > 1 ? '-' + (pc.start + pc.pages - 1) : '') : 'n/i', 555, y, 9, fb, pc.src ? INK : RED);
+      TR((pc.src || pc.images) ? String(pc.start) + (pc.pages > 1 ? '-' + (pc.start + pc.pages - 1) : '') : 'n/i', 555, y, 9, fb, (pc.src || pc.images) ? INK : RED);
       y -= 17;
     });
   }
@@ -81,7 +91,9 @@ async function buildPdf(soc, periodId, data, readDoc) {
     const label = 'Pièce n° ' + it.n + ' · ' + bshort(it) + ' · ' + TYPE_SHORT[it.type] + ' · ' + frFull(l.date) + ' · ' + (l.label || '');
     let first;
     if (pc.src) { const cp = await out.copyPages(pc.src, pc.src.getPageIndices()); cp.forEach(x => out.addPage(x)); first = cp[0]; }
-    else {
+    else if (pc.images) {
+      for (const im of pc.images) { const pgi = out.addPage([im.w, im.h]); const emb = await out.embedJpg(im.jpeg); pgi.drawImage(emb, { x: 0, y: 0, width: im.w, height: im.h }); if (!first) first = pgi; }
+    } else {
       first = out.addPage([595.28, 841.89]);
       first.drawText(wa('Justificatif non intégré : ' + pc.err), { x: 40, y: 760, size: 11, font: f, color: INK });
       first.drawText(wa(l.doc.name || ''), { x: 40, y: 742, size: 9, font: f, color: MUT });
@@ -91,7 +103,8 @@ async function buildPdf(soc, periodId, data, readDoc) {
     first.drawText(txt, { x: 19, y: h - 20, size: 8, font: fb, color: RED });
   }
   const result = Buffer.from(await out.save());
-  result.skipped = pieces.filter(pc => !pc.src).map(pc => ({ n: pc.it.n, name: pc.it.l.doc.name, err: pc.err }));   // pièces remplacées par une page d'avertissement
+  result.rasterized = pieces.filter(pc => pc.images).map(pc => ({ n: pc.it.n, name: pc.it.l.doc.name }));   // insérées comme images
+  result.skipped = pieces.filter(pc => !pc.src && !pc.images).map(pc => ({ n: pc.it.n, name: pc.it.l.doc.name, err: pc.err }));   // pièces remplacées par une page d'avertissement
   return result;
 }
 module.exports = { buildPdf, wa };

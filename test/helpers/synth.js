@@ -1,7 +1,7 @@
 /* Fabrique des relevés PDF de test qui reproduisent la mise en page des relevés Crédit Mutuel et Société Générale :
    textes positionnés par colonnes, montants alignés à droite sous Débit / Crédit. */
 'use strict';
-const { PDFDocument, StandardFonts, rgb, degrees } = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb, degrees } = require('@cantoo/pdf-lib');
 
 const fmtAmt = s => { const [i, d] = Number(s).toFixed(2).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + d; };
 const date = day => String(day).padStart(2, '0') + '/09/2026';

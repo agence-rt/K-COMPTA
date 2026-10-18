@@ -9,7 +9,7 @@ const { buildXlsx } = require('../core/export/xlsx');
 const { buildPdf } = require('../core/export/pdf');
 const { buildLinesPdf } = require('../core/export/pdf-lines');
 
-function createApi({ config, auth, dialogs, openPath, version, pending }) {
+function createApi({ config, auth, dialogs, openPath, version, pending, rasterize }) {
   const store = () => { const r = config.comptaRoot(); if (!r) return null; const s = new Store(r); s.ensure(); return s; };
   const need = () => { const s = store(); if (!s) throw new Error('Dossier Dropbox introuvable : choisissez-le dans Réglages.'); return s; };
   const publicCfg = () => {
@@ -75,7 +75,7 @@ function createApi({ config, auth, dialogs, openPath, version, pending }) {
       const data = s.load(soc, period), dir = path.join(s.periodDir(soc, period), 'exports');
       fs.mkdirSync(dir, { recursive: true });
       const base = 'AGOA-COMPTA_' + C.slug(C.SOC[soc].short) + '_' + C.periodInfo(soc, period).id;
-      const files = []; let message = '';
+      const files = []; let message = '', skipped = 0;
       if (kind === 'xlsx' || kind === 'all') {
         const n = base + '_lignes-et-TVA.xlsx'; fs.writeFileSync(path.join(dir, n), buildXlsx(soc, period, data)); files.push({ name: n, rel: path.join('exports', n) });
       }
@@ -83,14 +83,16 @@ function createApi({ config, auth, dialogs, openPath, version, pending }) {
         const n = base + '_lignes-et-TVA.pdf'; fs.writeFileSync(path.join(dir, n), await buildLinesPdf(soc, period, data)); files.push({ name: n, rel: path.join('exports', n) });
       }
       if (kind === 'pdf' || kind === 'all') {
-        const buf = await buildPdf(soc, period, data, async l => { try { return l.doc ? fs.readFileSync(s.absPath(soc, period, l.doc.rel)) : null; } catch (e) { return null; } });
+        const buf = await buildPdf(soc, period, data, async l => { try { return l.doc ? fs.readFileSync(s.absPath(soc, period, l.doc.rel)) : null; } catch (e) { return null; } }, rasterize);
         if (buf) {
           const n = base + '_justificatifs.pdf'; fs.writeFileSync(path.join(dir, n), buf); files.push({ name: n, rel: path.join('exports', n) });
-          if (buf.skipped && buf.skipped.length) message = buf.skipped.length + ' justificatif' + (buf.skipped.length > 1 ? 's' : '') + ' non intégré' + (buf.skipped.length > 1 ? 's' : '') + ' au PDF (remplacé' + (buf.skipped.length > 1 ? 's' : '') + ' par une page d\'avertissement) : ' + buf.skipped.map(x => 'n° ' + x.n + ' ' + x.name + ' (' + x.err + ')').join(' ; ') + '.';
+          if (buf.rasterized && buf.rasterized.length) message = buf.rasterized.length + ' justificatif' + (buf.rasterized.length > 1 ? 's' : '') + ' abîmé' + (buf.rasterized.length > 1 ? 's' : '') + ' intégré' + (buf.rasterized.length > 1 ? 's' : '') + ' sous forme d\'images (n° ' + buf.rasterized.map(x => x.n).join(', ') + ').';
+          skipped = (buf.skipped || []).length;
+          if (buf.skipped && buf.skipped.length) message = (message ? message + ' ' : '') + buf.skipped.length + ' justificatif' + (buf.skipped.length > 1 ? 's' : '') + ' non intégré' + (buf.skipped.length > 1 ? 's' : '') + ' au PDF (remplacé' + (buf.skipped.length > 1 ? 's' : '') + ' par une page d\'avertissement) : ' + buf.skipped.map(x => 'n° ' + x.n + ' ' + x.name + ' (' + x.err + ')').join(' ; ') + '.';
         }
         else message = 'Aucun justificatif rattaché : PDF non créé.';
       }
-      return { files, message };
+      return { files, message, skipped: skipped };
     }
   };
   return api;

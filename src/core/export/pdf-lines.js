@@ -1,6 +1,6 @@
 /* Export PDF « Lignes et TVA » : même contenu que l'Excel (résumé TVA puis un tableau par compte bancaire), en paysage. */
 'use strict';
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb } = require('@cantoo/pdf-lib');
 const C = require('../calc');
 const { SOC, fmt, fmt0, frFull, r2, TYPE_NOTE, TYPE_SHORT } = C;
 const { wa } = require('./pdf');

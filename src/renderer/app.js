@@ -307,8 +307,8 @@ async function runExport(kind){
     await flushSave();
     const r=await A.export.run(S.soc,S.period[S.soc],kind);
     const out=$('#expout');
-    if(out)out.innerHTML=r.files.length?'<ul class="chk" style="margin-top:10px">'+r.files.map(f=>'<li><span class="pill ok">Créé</span><span>'+esc(f.name)+'</span></li>').join('')+'</ul>'+(r.message?'<p class="note" style="color:var(--bad)">'+esc(r.message)+'</p>':'')+'<button class="btn small" style="margin-top:8px" data-act="openexp">Ouvrir le dossier</button>':'';
-    toast(r.files.length?r.files.length+' fichier'+(r.files.length>1?'s':'')+' créé'+(r.files.length>1?'s':'')+'.'+(r.message?' Attention : certains justificatifs n\'ont pas pu être intégrés.':''):(r.message||'Rien à exporter.'));
+    if(out)out.innerHTML=r.files.length?'<ul class="chk" style="margin-top:10px">'+r.files.map(f=>'<li><span class="pill ok">Créé</span><span>'+esc(f.name)+'</span></li>').join('')+'</ul>'+(r.message?'<p class="note" style="'+(r.skipped?'color:var(--bad)':'')+'">'+esc(r.message)+'</p>':'')+'<button class="btn small" style="margin-top:8px" data-act="openexp">Ouvrir le dossier</button>':'';
+    toast(r.files.length?r.files.length+' fichier'+(r.files.length>1?'s':'')+' créé'+(r.files.length>1?'s':'')+'.'+(r.skipped?' Attention : certains justificatifs n\'ont pas pu être intégrés.':''):(r.message||'Rien à exporter.'));
   }catch(e){toast('Export impossible : '+e.message)}
   finally{setBusy(false)}
 }

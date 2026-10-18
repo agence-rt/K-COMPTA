@@ -7,6 +7,7 @@ const { Auth } = require('./auth');
 const { createApi } = require('./api');
 const { readComptaFile } = require('./store');
 const { checkAndInstall } = require('./updater');
+const { rasterizeWithWindow } = require('./raster');
 
 if (!app.requestSingleInstanceLock()) { app.quit(); }
 
@@ -29,7 +30,7 @@ function boot() {
     save: async (title, name, filters) => { const r = await dialog.showSaveDialog(win, { title, defaultPath: name, filters }); return r.canceled ? null : r.filePath; },
     files: async (title, filters, multi) => { const r = await dialog.showOpenDialog(win, { title, filters, properties: multi ? ['openFile', 'multiSelections'] : ['openFile'] }); return r.canceled ? [] : r.filePaths; }
   };
-  const api = createApi({ config, auth, dialogs, pending: { take: () => { const p = pendingOpen; pendingOpen = null; return p; } }, version: app.getVersion(), openPath: async p => { const e = await shell.openPath(p); if (e) throw new Error(e); } });
+  const api = createApi({ config, auth, dialogs, rasterize: buf => rasterizeWithWindow(BrowserWindow, buf), pending: { take: () => { const p = pendingOpen; pendingOpen = null; return p; } }, version: app.getVersion(), openPath: async p => { const e = await shell.openPath(p); if (e) throw new Error(e); } });
   Object.keys(api).forEach(ch => ipcMain.handle(ch, async (ev, ...args) => api[ch](...args)));
   ipcMain.on('period:saveSync', (ev, soc, period, data) => { try { api['period:save'](soc, period, data); ev.returnValue = true; } catch (e) { ev.returnValue = false; } });
 }
