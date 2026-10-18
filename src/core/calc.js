@@ -60,10 +60,36 @@
     if (!l.type) return { c: 'todo', t: 'À classer' };
     if (l.type === 'hors') return { c: 'ok', t: 'Hors TVA' };
     if (!(l.type === 'dep' ? l.debit > 0 : l.credit > 0)) return { c: 'bad', t: 'Sens incohérent' };
+    if (l.doc && l.doc.total != null && Math.abs(l.doc.total - lineTTC(l)) > 0.005) return { c: 'bad', t: 'À vérifier', why: 'Montant du PDF (' + fmt(l.doc.total) + ' €) différent de la ligne (' + fmt(lineTTC(l)) + ' €).' };
     if (!l.vent.length) return { c: 'bad', t: 'À ventiler' };
     const r = remain(l);
     if (r < -0.005) return { c: 'bad', t: 'Écart ' + Math.abs(r).toFixed(2).replace('.', ',') + ' €' };
+    // rapprochement avec le justificatif : absent ou montant différent => à vérifier
+    if (!l.doc) return { c: 'bad', t: 'À vérifier', why: 'Justificatif manquant.' };
     return { c: 'ok', t: 'Ventilée' };
+  }
+
+  /* ---------- code unique de ligne : ANNEE-MOIS-BANQUE-N (ex. 2026-09-CM-12) ---------- */
+  const bankCode = b => String(b || '').toUpperCase();
+  const codePrefix = l => String(l.date || '').slice(0, 7) + '-' + bankCode(l.bank) + '-';
+  function nextNumber(data, prefix) {
+    let n = 0;
+    data.lines.forEach(x => { if (x.code && x.code.startsWith(prefix)) { const k = parseInt(x.code.slice(prefix.length), 10); if (k > n) n = k; } });
+    return n + 1;
+  }
+  /** Donne un code aux lignes qui n'en ont pas, dans l'ordre des dates (le numéro suit la ligne, il ne change plus ensuite). */
+  function assignCodes(data) {
+    const todo = data.lines.map((l, i) => [l, i]).filter(x => !x[0].code && /^\d{4}-\d{2}/.test(x[0].date || '') && x[0].bank)
+      .sort((a, b) => (a[0].date < b[0].date ? -1 : a[0].date > b[0].date ? 1 : a[1] - b[1]));
+    todo.forEach(([l]) => { const p = codePrefix(l); l.code = p + nextNumber(data, p); });
+    return data;
+  }
+  /** Nouveau code après changement de date ou de compte (seulement tant qu'aucun justificatif n'est rangé sous l'ancien code). */
+  function recode(data, l) {
+    if (l.doc || !/^\d{4}-\d{2}/.test(l.date || '') || !l.bank) return;
+    const p = codePrefix(l);
+    if (l.code && l.code.startsWith(p)) return;
+    l.code = null; l.code = p + nextNumber(data, p);
   }
 
   function fillAll(l, rate) {
@@ -146,6 +172,6 @@
   const slug = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'ligne';
 
   return { r2, SOC, MOIS, RATES_DEP, RATES_REC, periodsFor, periodIdOf, periodYear, periodInfo, newId, makeLine, blankPeriod,
-    lineTTC, vTva, vTTC, remain, needsDoc, lineState, fillAll, applyHint, setType, acct, stats, totals,
+    lineTTC, vTva, vTTC, remain, needsDoc, lineState, bankCode, assignCodes, recode, fillAll, applyHint, setType, acct, stats, totals,
     TYPE_LABEL, TYPE_NOTE, TYPE_SHORT, exportModel, fmt, fmt0, rl, frFull, slug };
 });

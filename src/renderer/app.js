@@ -109,7 +109,7 @@ function sideHTML(){
     '<div><h2>Période</h2><div style="display:grid;grid-template-columns:84px 1fr;gap:6px"><select class="sel" data-f="year" aria-label="Année">'+yopts+'</select><select class="sel" data-f="period" aria-label="Période">'+opts+'</select></div></div>'+
     '<div><h2>Relevés PDF</h2>'+files+'<button class="drop" data-act="importstmt">Importer un relevé depuis ce PC</button></div>'+
     '<div><h2>Dossier Dropbox surveillé</h2><div class="card" style="padding:10px 12px">'+dbx+'</div>'+
-    '<p class="note">Les relevés déposés dans A-TRAITER sont lus, rattachés à leur période d\'après les dates des lignes, puis rangés dans le dossier de la période.</p></div>';
+    '<p class="note">Les relevés déposés dans A-TRAITER sont lus et rangés par période. Les factures et reçus PDF sont lus (émetteur, montant), rapprochés des lignes, renommés avec le code de la ligne et rangés dans justificatifs.</p></div>';
 }
 function headHTML(){
   const s=SOC[S.soc],p=per();
@@ -162,7 +162,7 @@ function rowHTML(l){
   const open=S.expanded.has(l.id)&&(l.type==='dep'||l.type==='rec');
   const banks=SOC[S.soc].banks;
   const seg='<div class="seg" role="group" aria-label="Nature de la ligne">'+[['dep','Dépense'],['rec','Recette'],['hors','Hors TVA']].map(t=>'<button data-act="type" data-id="'+l.id+'" data-v="'+t[0]+'" aria-pressed="'+(l.type===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
-  let r='<tr class="row'+(V.cur&&l.doc&&l.doc.rel===V.cur.rel?' viewing':'')+'"><td><input class="cell dt" type="date" data-f="date" data-id="'+l.id+'" value="'+esc(l.date)+'" aria-label="Date"></td>'+
+  let r='<tr class="row'+(V.cur&&l.doc&&l.doc.rel===V.cur.rel?' viewing':'')+'"><td><input class="cell dt" type="date" data-f="date" data-id="'+l.id+'" value="'+esc(l.date)+'" aria-label="Date"><div class="code" title="Code unique de la ligne : nom du justificatif rangé dans Dropbox">'+esc(l.code||'')+'</div></td>'+
     '<td><input class="cell lbl" data-f="label" data-id="'+l.id+'" value="'+esc(l.label)+'" placeholder="Libellé du relevé" aria-label="Libellé">'+(l.hint?'<div class="hint">'+esc(l.hint.text)+'</div>':'')+'</td>'+
     (banks.length>1?'<td><select class="cell" data-f="bank" data-id="'+l.id+'" aria-label="Compte">'+banks.map(b=>'<option value="'+b.id+'" title="'+esc(b.name)+'"'+(l.bank===b.id?' selected':'')+'>'+b.id.toUpperCase()+'</option>').join('')+'</select></td>':'')+
     '<td><input class="cell m" inputmode="decimal" data-f="debit" data-id="'+l.id+'" value="'+(l.debit?fmt(l.debit):'')+'" aria-label="Débit"></td>'+
@@ -341,7 +341,7 @@ function refresh(){
   });
   st.lines.forEach(l=>{
     const s=lineState(l),e=$('#st-'+l.id);
-    if(e){e.className='pill '+s.c;e.textContent=s.t}
+    if(e){e.className='pill '+s.c;e.textContent=s.t;e.title=s.why||''}
     const tv=$('#tv-'+l.id);
     if(tv){const sum=l.vent.reduce((a,v)=>a+vTva(v),0);tv.textContent=(l.type==='dep'||l.type==='rec')&&l.vent.length?fmt(sum):'—';tv.title=l.type==='dep'?'TVA déductible':l.type==='rec'?'TVA collectée':''}
     const ttc=$('#ttc-'+l.id);if(ttc)ttc.textContent=fmt(lineTTC(l));
@@ -407,12 +407,17 @@ async function switchTo(soc,period){
 async function afterImport(reports){
   /* les périodes touchées ont changé sur le disque : on les recharge */
   let first=null;
-  reports.forEach(r=>{(r.parts||[]).forEach(p=>{delete S.data[r.soc+'|'+p.period];delete snap[r.soc+'|'+p.period];if(!first&&p.added)first={soc:r.soc,period:p.period}})});
+  reports.forEach(r=>{(r.parts||[]).forEach(p=>{delete S.data[r.soc+'|'+p.period];delete snap[r.soc+'|'+p.period];if(!first&&p.added)first={soc:r.soc,period:p.period}});(r.touched||[]).forEach(t=>{delete S.data[t.soc+'|'+t.period];delete snap[t.soc+'|'+t.period]})});
   if(first){await switchTo(first.soc,first.period)}else{delete S.data[key()];await load();render()}
-  const ok=reports.filter(r=>r.ok),ko=reports.filter(r=>!r.ok);
+  const rel=reports.filter(r=>r.kind!=='justificatif'),jus=reports.filter(r=>r.kind==='justificatif');
+  const ok=rel.filter(r=>r.ok),ko=rel.filter(r=>!r.ok);
   const lines=ok.reduce((a,r)=>a+r.parts.reduce((b,p)=>b+(p.added?p.lines:0),0),0);
   const warn=ok.filter(r=>r.issues.length).length;
-  toast((ok.length?ok.length+' relevé'+(ok.length>1?'s':'')+' lu'+(ok.length>1?'s':'')+', '+lines+' ligne'+(lines>1?'s':'')+' ajoutée'+(lines>1?'s':'')+'.':'Aucun relevé lu.')+(warn?' '+warn+' à vérifier.':'')+(ko.length?' '+ko.length+' non lu'+(ko.length>1?'s':'')+' : '+ko[0].issues[0]:''));
+  const jok=jus.filter(r=>r.ok),jko=jus.filter(r=>!r.ok),jmis=jok.filter(r=>r.matched&&r.matched.mismatch).length;
+  const parts=[];
+  if(rel.length)parts.push(ok.length?ok.length+' relevé'+(ok.length>1?'s':'')+' lu'+(ok.length>1?'s':'')+', '+lines+' ligne'+(lines>1?'s':'')+' ajoutée'+(lines>1?'s':'')+'.':'Aucun relevé lu.');
+  if(jus.length)parts.push(jok.length+' justificatif'+(jok.length>1?'s':'')+' rapproché'+(jok.length>1?'s':'')+(jmis?' ('+jmis+' à vérifier)':'')+(jko.length?', '+jko.length+' à traiter à la main':'')+'.');
+  toast(parts.join(' ')+(warn?' '+warn+' relevé'+(warn>1?'s':'')+' à vérifier.':'')+(ko.length?' '+ko.length+' non lu'+(ko.length>1?'s':'')+' : '+ko[0].issues[0]:''));
   S.lastReports=reports;showReports(reports);
   refreshInbox();
 }
@@ -421,7 +426,7 @@ function showReports(rs){
   console.warn('Relevés à vérifier',bad.map(r=>r.file+' : '+r.issues.join(' ; ')));
   const box=$('#pane');if(!box)return;
   const el=document.createElement('div');el.className='card warnbox';
-  el.innerHTML='<h3>Relevés à vérifier</h3><ul class="chk">'+bad.map(r=>'<li><span class="pill '+(r.ok?'todo':'bad')+'">'+(r.ok?'À voir':'Non lu')+'</span><span><b>'+esc(r.file)+'</b><br>'+r.issues.map(esc).join('<br>')+'</span></li>').join('')+'</ul>';
+  el.innerHTML='<h3>Relevés et justificatifs à vérifier</h3><ul class="chk">'+bad.map(r=>'<li><span class="pill '+(r.ok?'todo':'bad')+'">'+(r.ok?'À voir':(r.kind==='justificatif'?'Non rapproché':'Non lu'))+'</span><span><b>'+esc(r.file)+'</b><br>'+r.issues.map(esc).join('<br>')+'</span></li>').join('')+'</ul>';
   box.prepend(el);
 }
 
@@ -449,7 +454,7 @@ root.addEventListener('click',async e=>{
   else if(a==='all'&&l){fillAll(l,+v);render()}
   else if(a==='adddoc'&&l){
     await flushSave();
-    const r=await A.doc.pick(S.soc,S.period[S.soc],{date:l.date,label:l.label});
+    const r=await A.doc.pick(S.soc,S.period[S.soc],{code:l.code,date:l.date,label:l.label});
     if(r&&r.doc){l.doc=r.doc;render();await showPdf(r.doc.rel,r.doc.name)}
   }
   else if(a==='opendoc'&&l&&l.doc){await showPdf(l.doc.rel,l.doc.name)}
@@ -458,7 +463,7 @@ root.addEventListener('click',async e=>{
   else if(a==='delline'&&l){st.lines=st.lines.filter(x=>x.id!==id);S.expanded.delete(id);render()}
   else if(a==='addline'){
     const nl=C.makeLine({date:per().start,bank:S.bankf!=='all'?S.bankf:SOC[S.soc].banks[0].id});
-    st.lines.push(nl);S.filter='all';render();
+    st.lines.push(nl);C.assignCodes(st);S.filter='all';render();
     const i=$('[data-f="label"][data-id="'+nl.id+'"]');if(i)i.focus();
   }
   else if(a==='importstmt'&&!S.busy){
@@ -477,7 +482,7 @@ root.addEventListener('input',e=>{
   const t=e.target,f=t.dataset.f;if(!f||S.auth!=='ok')return;
   const st=store(),l=t.dataset.id?find(t.dataset.id):null,i=+t.dataset.i;
   if(f==='label'&&l)l.label=t.value;
-  else if(f==='date'&&l)l.date=t.value;
+  else if(f==='date'&&l){l.date=t.value;C.recode(st,l);const cd=t.parentNode.querySelector('.code');if(cd)cd.textContent=l.code||''}
   else if(f==='debit'&&l){l.debit=parse(t.value)}
   else if(f==='credit'&&l){l.credit=parse(t.value)}
   else if(f==='vht'&&l){const v=l.vent[i];v.ht=parse(t.value);v.tva=null;const x=$('[data-f="vtva"][data-id="'+l.id+'"][data-i="'+i+'"]');if(x)x.value=fmt(vTva(v))}
@@ -494,7 +499,7 @@ root.addEventListener('change',async e=>{
   if(f==='year'){const y=+t.value,list=C.periodsFor(S.soc,y),cur=C.periodInfo(S.soc,S.period[S.soc]);const same=list.find(p=>p.folder===cur.folder)||list[0];await switchTo(S.soc,same.id)}
   else if(f==='period'){await switchTo(S.soc,t.value)}
   else if(f==='bankf'){S.bankf=t.value;render()}
-  else if(f==='bank'&&l){l.bank=t.value;refresh()}
+  else if(f==='bank'&&l){l.bank=t.value;C.recode(st,l);render()}
   else if(f==='rate'&&l){if(t.value==='')l.vent=[];else if(t.value!=='multi'){const keep=l.vent[0]&&l.vent.length===1?l.vent[0]:null;fillAll(l,+t.value)}render()}
   else if(f==='vrate'&&l){const v=l.vent[+t.dataset.i];v.rate=+t.value;v.tva=null;render()}
   else if(f==='immo'&&l){l.immo=t.checked;refresh()}

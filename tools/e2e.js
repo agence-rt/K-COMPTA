@@ -2,6 +2,7 @@
 const { chromium } = require('/opt/npm-tools/node_modules/playwright');
 const fs = require('fs'), os = require('os'), path = require('path');
 const { make } = require('../test/helpers/synth');
+const { makeInvoice } = require('../test/helpers/invoice');
 const F = require('../test/fixtures/septembre-2026.json');
 const { createApi } = require('../src/main/api');
 const { Config } = require('../src/main/config');
@@ -15,6 +16,8 @@ const assert = require('assert');
   const st = new Store(root); st.ensure();
   fs.writeFileSync(path.join(st.inboxDir(), 'Extrait de comptes Compte 07391 Eurocompte PRO Confort SARL THOMAS KOCHANSKI ARCHITECTE au 2026-09-30.pdf'), await make('cm', { lines: F.CM, meta: F.meta.CM }));
   fs.writeFileSync(path.join(st.inboxDir(), 'releve_THOMAS_KOCHANSKI_ARCHITECTE_00028011512_30092026.pdf'), await make('sg', { lines: F.SG, meta: F.meta.SG }));
+  fs.writeFileSync(path.join(st.inboxDir(), 'vistaprint.pdf'), await makeInvoice(['VISTAPRINT', 'Date : 17/09/2026', 'Total HT 27,50 EUR', 'TVA 20,00 % 5,50 EUR', 'Total TTC 33,00 EUR']));
+  fs.writeFileSync(path.join(st.inboxDir(), 'free.pdf'), await makeInvoice(['FREE MOBILE', 'Date : 09/09/2026', 'Total HT 1,67 EUR', 'TVA 20,00 % 0,33 EUR', 'Total TTC 2,00 EUR']));
   const just = path.join(tmp, 'facture.pdf'); fs.writeFileSync(just, await make('sg', { lines: [], meta: F.meta.SG }).catch(() => Buffer.from('%PDF-1.4')));
   const config = new Config(path.join(tmp, 'config.json')); config.set({ root, google: { clientId: 'cid' } });
   const auth = new Auth({ getConfig: () => config.get(), openExternal: async () => {} });
@@ -49,6 +52,12 @@ const assert = require('assert');
   console.log('chips:', (await page.textContent('#chips')).replace(/\s+/g, ' '));
   assert.ok(/2\/2 concordants/.test(await page.textContent('#chips')));
   await shot('2-lignes');
+  const vp = page.locator('tr.row', { has: page.locator('input[value="PAIEMENT CB VISTAPRINT"]') });
+  assert.match(await vp.locator('.code').textContent(), /^2026-09-CM-\d+$/);
+  assert.strictEqual((await vp.locator('[id^=st-]').textContent()).trim(), 'À vérifier'); assert.ok(await vp.locator('[id^=st-].bad').count());
+  const fr = page.locator('tr.row', { has: page.locator('input[value="PRLV SEPA FREE MOBILE"]') });
+  assert.strictEqual((await fr.locator('[id^=st-]').textContent()).trim(), 'Ventilée'); assert.ok((await fr.locator('.chip .fn').textContent()).includes('2026-09-CM-'));
+  console.log('rapprochements OK'); await shot('2a-rapprochement');
   // classer une ligne en dépense, ajouter un justificatif
   const row = page.locator('tr.row', { has: page.locator('input[value="PAIEMENT CB ADOBE"]') }).first();
   await row.locator('[data-act=type][data-v=dep]').click();
@@ -71,7 +80,7 @@ const assert = require('assert');
   assert.ok(fs.existsSync(path.join(st.periodDir('archi', '2026-09'), 'periode.compta')));
   const ex = fs.readdirSync(path.join(st.periodDir('archi', '2026-09'), 'exports')); console.log(ex); assert.strictEqual(ex.length, 2);
   // rechargement : l'état revient du disque
-  await page.reload(); await page.waitForSelector('tr.row'); assert.strictEqual(await page.locator('tr.row').count(), 50); assert.ok(await page.locator('.chip .fn').count() === 1);
+  await page.reload(); await page.waitForSelector('tr.row'); assert.strictEqual(await page.locator('tr.row').count(), 50); assert.strictEqual(await page.locator('.chip .fn').count(), 3);
   console.log('erreurs page:', errs); assert.deepStrictEqual(errs, []);
   await br.close(); console.log('E2E OK');
 })().catch(e => { console.error('E2E KO', e); process.exit(1); });

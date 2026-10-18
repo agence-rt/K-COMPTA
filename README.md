@@ -11,6 +11,10 @@ Comptabilité et déclarations de TVA (CA3) de **THOMAS KOCHANSKI ARCHITECTE** (
 
 Les données de chaque période sont enregistrées automatiquement dans un fichier `periode.compta` (dossier de la période), donc partagées via Dropbox. Le format `.compta` est lié à l'application : un double-clic sur un fichier `.compta` ouvre AGOA COMPTA directement sur cette période (association créée par l'installateur).
 
+## Codes de ligne et justificatifs
+Chaque ligne reçoit un code unique `ANNEE-MOIS-BANQUE-N` (ex. `2026-09-CM-12`), numéroté ligne par ligne dans l'ordre des dates. Les justificatifs sont rangés sous ce code (`justificatifs/2026-09-CM-12.pdf`).
+Les factures et reçus déposés dans `A-TRAITER` sont lus (émetteur, date, HT, TVA, TTC) puis rapprochés des lignes sans justificatif : montant identique + émetteur retrouvé dans le libellé. Le PDF est renommé, rangé et lié à la ligne (la nature et la TVA sont renseignées si le PDF les donne). Sans rapprochement possible (PDF absent, montant différent, plusieurs lignes possibles), l'état de la ligne passe à **À vérifier** en rouge, et le PDF reste dans `A-TRAITER`.
+
 ## Connexion Google
 La connexion Google est obligatoire à chaque lancement et seul le compte `agence@remithollet.fr` donne accès au logiciel (pas de mode local). Les identifiants OAuth (client « application de bureau » Google Cloud) sont intégrés au build à partir des secrets GitHub `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` ; le build échoue s'ils manquent. Aucune saisie dans l'application.
 

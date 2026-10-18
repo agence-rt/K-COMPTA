@@ -52,13 +52,15 @@ test('classement et ventilation conservés après enregistrement', async () => {
   assert.strictEqual(C.totals(back).D.L20, 2);
 });
 
-test('justificatif rangé sous la date et le libellé', () => {
+test('justificatif rangé sous le code de la ligne', async () => {
   const root = tmp(), st = new Store(root), src = path.join(root, 'facture.pdf');
   fs.writeFileSync(src, '%PDF-1.4');
-  const l = C.makeLine({ date: '2026-09-10', label: 'PAIEMENT CB ADOBE' });
-  const a = st.attachDoc('archi', '2026-09', l, src), b = st.attachDoc('archi', '2026-09', l, src);
-  assert.strictEqual(a.name, '2026-09-10_paiement-cb-adobe.pdf');
-  assert.strictEqual(b.name, '2026-09-10_paiement-cb-adobe-2.pdf');
+  const l = C.makeLine({ date: '2026-09-10', label: 'PAIEMENT CB ADOBE', bank: 'cm' });
+  const d = C.blankPeriod('archi', '2026-09'); d.lines.push(l); C.assignCodes(d);
+  assert.strictEqual(l.code, '2026-09-CM-1');
+  const a = await st.attachDoc('archi', '2026-09', l, src), b = await st.attachDoc('archi', '2026-09', l, src);
+  assert.strictEqual(a.name, '2026-09-CM-1.pdf');
+  assert.strictEqual(b.name, '2026-09-CM-1-2.pdf');
   assert.ok(fs.existsSync(st.absPath('archi', '2026-09', a.rel)));
   assert.throws(() => st.absPath('archi', '2026-09', '../../x'));
 });

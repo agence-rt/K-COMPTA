@@ -251,3 +251,4 @@ select.cell[data-f=bank]{width:52px}
 /* panneau ouvert : le volet société/période se replie pour donner la place au tableau */
 body.viewer-open .app{grid-template-columns:minmax(0,1fr)}
 body.viewer-open .side{display:none}
+.code{font:10px/1.2 var(--mono);color:var(--muted);padding:0 4px;white-space:nowrap}

@@ -45,6 +45,7 @@ function mergePart(data, parsed, part, file) {
     data.lines.push(o);
   });
   data.lines.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  C.assignCodes(data);
   data.statements.push({ name: file.name, rel: file.rel || null, bank: parsed.bank, account: parsed.account, from: dates[0], to: dates[dates.length - 1],
     open: part.open, close: part.close, td: part.td, tc: part.tc, nlines: part.lines.length, src: file.src || 'pc',
     info: (parsed.bank === 'cm' ? 'Crédit Mutuel' : 'Société Générale') + (parsed.account ? ' · compte ' + parsed.account : '') + ' · ' + C.frFull(dates[0]).slice(0, 5) + ' au ' + C.frFull(dates[dates.length - 1]) + ' · ' + part.lines.length + ' ligne' + (part.lines.length > 1 ? 's' : '') });
