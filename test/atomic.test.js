@@ -25,3 +25,21 @@ test('writeAtomic : un EPERM passager sur le renommage est absorbé', () => {
   try { writeAtomic(f, 'ok'); } finally { fs.renameSync = real; }
   assert.equal(fs.readFileSync(f, 'utf8'), 'ok');
 });
+
+test('sauvegardes de secours : au plus 10 conservées, espacées dans le temps', () => {
+  const { Store } = require('../src/main/store'), C = require('../src/core/calc');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agoa-bk-')); Store.backupEvery = 0;
+  try {
+    const s = new Store(root), d = C.blankPeriod('archi', '2026-09');
+    for (let i = 0; i < 15; i++) { d.note = 'v' + i; s.save('archi', '2026-09', d); }
+    const b = s.listBackups('archi', '2026-09');
+    assert.equal(b.length, 10);
+    const newest = JSON.parse(fs.readFileSync(path.join(s.periodDir('archi', '2026-09'), 'backups', b[0]), 'utf8'));
+    assert.equal(newest.data.note, 'v13');                       // le dernier backup est l'état juste avant la dernière écriture
+    Store.backupEvery = 60000; Store.lastBackup = {};
+    const t = new Store(root); t.save('archi', '2026-09', d); t.save('archi', '2026-09', d); t.save('archi', '2026-09', d);
+    assert.equal(t.listBackups('archi', '2026-09').length, 10);   // 1 seul nouveau backup pour 3 enregistrements rapprochés (rotation)
+    const dest = path.join(root, 'copie.compta'); t.exportCompta('archi', '2026-09', dest);
+    assert.equal(JSON.parse(fs.readFileSync(dest, 'utf8')).app, 'AGOA-COMPTA');
+  } finally { Store.backupEvery = 5 * 60 * 1000; Store.lastBackup = {}; }
+});

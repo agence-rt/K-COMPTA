@@ -22,7 +22,7 @@ const assert = require('assert');
   const config = new Config(path.join(tmp, 'config.json')); config.set({ root, google: { clientId: 'cid' } });
   const auth = new Auth({ getConfig: () => config.get(), openExternal: async () => {} });
   auth.login = async () => { auth.session = { user: { email: 'agence@remithollet.fr', name: 'Agence' } }; return auth.current(); };   // le vrai flux est testé dans auth.test.js
-  const api = createApi({ config, auth, version: 'test', openPath: async () => {}, dialogs: { folder: async () => root, files: async (t) => [just] } });
+  const api = createApi({ config, auth, version: '0.1.99', openPath: async () => {}, dialogs: { save: async (t, n) => path.join(root, 'sortie-' + n), folder: async () => root, files: async (t) => [just] } });
 
   const br = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
   const page = await br.newPage({ viewport: { width: 1320, height: 860 } });
@@ -35,7 +35,7 @@ const assert = require('assert');
       auth: { session: c('auth:session'), login: c('auth:login'), logout: c('auth:logout') },
       period: { load: c('period:load'), save: c('period:save'), saveSync: () => true },
       inbox: { list: c('inbox:list'), importAll: c('inbox:importAll') }, statement: { pick: c('statement:pick') },
-      doc: { pick: c('doc:pick'), open: c('doc:open'), read: async (...a) => { const r = await window.__call('doc:read', a); if (r.e) throw new Error(r.e); return new Uint8Array(Object.values(r.v.data || r.v)); } }, folder: { open: c('folder:open') }, export: { run: c('export:run') } };
+      doc: { pick: c('doc:pick'), open: c('doc:open'), read: async (...a) => { const r = await window.__call('doc:read', a); if (r.e) throw new Error(r.e); return new Uint8Array(Object.values(r.v.data || r.v)); } }, folder: { open: c('folder:open') }, file: { saveAs: c('file:saveAs'), backups: c('file:backups') }, export: { run: c('export:run') } };
   });
   await page.goto('file://' + path.resolve(__dirname, '../src/renderer/index.html'));
   const shot = n => page.screenshot({ path: path.join(process.env.SHOTS || tmp, n + '.png') });
@@ -73,6 +73,12 @@ const assert = require('assert');
   await page.click('#vtab'); await page.waitForSelector('#viewer:not([hidden])'); assert.ok((await page.locator('#vsel option').count()) >= 2);
   const firstCode = await page.locator('tr.row td.codec').first().textContent(); assert.match(firstCode, /^\d{4}-\d{2}-[A-Z]+-\d+$/);
   assert.equal(await page.locator('table.t thead th').first().textContent(), 'Code'); console.log('volet + colonne code OK');
+  assert.match(await page.textContent('.tb .ver'), /v0\.1\.99/);
+  assert.ok(await page.locator('select.bk-cm').count()); assert.ok(await page.locator('select.bk-sg').count());
+  const col = async c => page.locator('select.bk-' + c).first().evaluate(e => getComputedStyle(e).color);
+  assert.equal(await col('sg'), 'rgb(198, 40, 40)'); assert.equal(await col('cm'), 'rgb(21, 101, 192)');
+  await page.click('[data-act=saveas]'); await page.waitForFunction(() => /Fichier enregistré/.test(document.querySelector('#toast').textContent));
+  assert.ok(fs.readdirSync(root).some(n => /^sortie-.*\.compta$/.test(n))); console.log('version, couleurs, enregistrer sous OK');
   await page.click('[data-act=tab][data-v=syn]'); console.log('synthèse:', (await page.textContent('.result')).replace(/\s+/g, ' ').slice(0, 160)); await shot('3-synthese');
   await page.click('[data-act=tab][data-v=exp]');
   await page.click('[data-act=exp-all]'); await page.waitForSelector('#expout li');

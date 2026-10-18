@@ -31,6 +31,15 @@ function createApi({ config, auth, dialogs, openPath, version, pending }) {
     'auth:logout': () => { auth.logout(); return true; },
 
     'period:load': (soc, period) => { guard(); const s = store(); return s ? s.load(soc, period) : C.blankPeriod(soc, period); },
+    'file:saveAs': async (soc, period) => {
+      guard(); const s = need(); const info = C.periodInfo(soc, period);
+      const name = 'AGOA-COMPTA_' + C.slug(C.SOC[soc].short) + '_' + info.id + '.compta';
+      const dest = await dialogs.save('Enregistrer le fichier .compta', name, [{ name: 'Fichier AGOA COMPTA', extensions: ['compta'] }]);
+      if (!dest) return null;
+      const out = /\.compta$/i.test(dest) ? dest : dest + '.compta';
+      s.exportCompta(soc, period, out); return { path: out };
+    },
+    'file:backups': (soc, period) => { guard(); return need().listBackups(soc, period); },
     'period:save': (soc, period, data) => { guard(); need().save(soc, period, data); return true; },
 
     'inbox:list': () => { guard(); const s = store(); return { count: s ? s.listInbox().length : 0 }; },

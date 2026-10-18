@@ -261,3 +261,11 @@ body.viewer-open .side{display:none}
 .vsel{padding:6px 12px;border-bottom:1px solid var(--line);background:var(--surface2)}
 .vsel select{width:100%;font:12px Arial,sans-serif;padding:4px}
 .vmsg.muted{color:var(--muted)}
+
+.tb .ver{font-weight:400;color:var(--muted);font-size:11.5px;margin-left:4px}
+.mact{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.saved{font-size:11px;color:var(--muted);white-space:nowrap}
+select.cell.bk{font-weight:700}
+select.cell.bk-sg{color:#C62828}
+select.cell.bk-cm{color:#1565C0}
+select.cell.bk option{color:#222;font-weight:400}

@@ -31,11 +31,13 @@ async function load(){
   if(!S.data[k]){S.data[k]=await A.period.load(S.soc,S.period[S.soc]);snap[k]=JSON.stringify(S.data[k])}
 }
 function queueSave(){clearTimeout(saveTimer);saveTimer=setTimeout(flushSave,600)}
+function markSaved(){const e=document.getElementById('saved');S.savedAt=new Date();if(e)e.textContent=savedLabel()}
+function savedLabel(){return S.savedAt?'Enregistré à '+S.savedAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'Enregistrement automatique'}
 async function flushSave(){
   clearTimeout(saveTimer);
   for(const k of Object.keys(S.data)){
     const j=JSON.stringify(S.data[k]);
-    if(j!==snap[k]){const [soc,period]=k.split('|');snap[k]=j;try{await A.period.save(soc,period,S.data[k])}catch(e){toast('Enregistrement impossible : '+e.message)}}
+    if(j!==snap[k]){const [soc,period]=k.split('|');snap[k]=j;try{await A.period.save(soc,period,S.data[k]);markSaved()}catch(e){toast('Enregistrement impossible : '+e.message)}}
   }
 }
 window.addEventListener('beforeunload',()=>{for(const k of Object.keys(S.data)){const j=JSON.stringify(S.data[k]);if(j!==snap[k]){const [soc,period]=k.split('|');A.period.saveSync(soc,period,S.data[k])}}});
@@ -104,7 +106,7 @@ function render(){
   if(S.auth!=='ok'){root.innerHTML=gateHTML();return}
   root.innerHTML=
   '<div class="win"><div class="tb"><span class="appico" aria-hidden="true">CPT</span>'+
-  '<span class="ttl"><strong>AGOA COMPTA</strong> — '+esc(SOC[S.soc].name)+'</span>'+
+  '<span class="ttl"><strong>AGOA COMPTA</strong> <span class="ver" title="Version du logiciel">'+esc(verLabel())+'</span> — '+esc(SOC[S.soc].name)+'</span>'+
   userChip()+'</div>'+
   '<div class="app"><aside class="side">'+sideHTML()+'</aside><main class="main">'+headHTML()+tabsHTML()+'<div id="pane">'+paneHTML()+'</div></main></div></div>';
   refresh();fillVsel();
@@ -128,7 +130,7 @@ function sideHTML(){
 }
 function headHTML(){
   const s=SOC[S.soc],p=per();
-  return '<div class="mhead"><div><h1>'+esc(s.name)+'</h1><p>'+esc(p.label)+' · Déclaration '+esc(s.freqLabel.toLowerCase())+(s.siren?' · SIREN '+esc(s.siren)+' · mini-réel':'')+'</p></div><div class="chips" id="chips"></div></div>';
+  return '<div class="mhead"><div><h1>'+esc(s.name)+'</h1><p>'+esc(p.label)+' · Déclaration '+esc(s.freqLabel.toLowerCase())+(s.siren?' · SIREN '+esc(s.siren)+' · mini-réel':'')+'</p></div><div class="mact"><div class="chips" id="chips"></div><button class="btn small" data-act="saveas" title="Enregistrer une copie du fichier .compta à l\'emplacement de votre choix">Enregistrer sous…</button><span class="saved" id="saved" title="Enregistrement automatique, avec 10 sauvegardes de secours">'+esc(savedLabel())+'</span></div></div>';
 }
 function tabsHTML(){
   const T=[['lines','Lignes bancaires'],['syn','Synthèse TVA'],['exp','Export'],['doc','Dossier AGOA-COMPTA'],['set','Réglages']];
@@ -179,7 +181,7 @@ function rowHTML(l){
   const seg='<div class="seg" role="group" aria-label="Nature de la ligne">'+[['dep','Dépense'],['rec','Recette'],['hors','Hors TVA']].map(t=>'<button data-act="type" data-id="'+l.id+'" data-v="'+t[0]+'" aria-pressed="'+(l.type===t[0])+'">'+t[1]+'</button>').join('')+'</div>';
   let r='<tr class="row'+(V.cur&&l.doc&&l.doc.rel===V.cur.rel?' viewing':'')+'"><td class="codec" id="cd-'+l.id+'" title="Code unique de la ligne : nom du justificatif rangé dans Dropbox">'+esc(l.code||'')+'</td><td><input class="cell dt" type="date" data-f="date" data-id="'+l.id+'" value="'+esc(l.date)+'" aria-label="Date"></td>'+
     '<td><input class="cell lbl" data-f="label" data-id="'+l.id+'" value="'+esc(l.label)+'" placeholder="Libellé du relevé" aria-label="Libellé">'+(l.hint?'<div class="hint">'+esc(l.hint.text)+'</div>':'')+'</td>'+
-    (banks.length>1?'<td><select class="cell" data-f="bank" data-id="'+l.id+'" aria-label="Compte">'+banks.map(b=>'<option value="'+b.id+'" title="'+esc(b.name)+'"'+(l.bank===b.id?' selected':'')+'>'+b.id.toUpperCase()+'</option>').join('')+'</select></td>':'')+
+    (banks.length>1?'<td><select class="cell bk bk-'+esc(l.bank)+'" data-f="bank" data-id="'+l.id+'" aria-label="Compte">'+banks.map(b=>'<option value="'+b.id+'" title="'+esc(b.name)+'"'+(l.bank===b.id?' selected':'')+'>'+b.id.toUpperCase()+'</option>').join('')+'</select></td>':'')+
     '<td><input class="cell m" inputmode="decimal" data-f="debit" data-id="'+l.id+'" value="'+(l.debit?fmt(l.debit):'')+'" aria-label="Débit"></td>'+
     '<td><input class="cell m" inputmode="decimal" data-f="credit" data-id="'+l.id+'" value="'+(l.credit?fmt(l.credit):'')+'" aria-label="Crédit"></td>'+
     '<td>'+seg+'</td><td>'+rateCell(l)+'</td><td class="num mono" id="tv-'+l.id+'"></td><td id="dc-'+l.id+'">'+docCell(l)+'</td>'+
@@ -381,6 +383,7 @@ const _refresh=refresh;
 refresh=function(){_refresh();queueSave()};
 
 /* ---------- connexion ---------- */
+function verLabel(){const v=(S.cfg||{}).version;return v?'v'+v:''}
 function userChip(){const m=S.me||{};return '<span class="usr"><span>'+esc(m.email||'')+'</span>'+((S.cfg||{}).authRequired?'<button class="lnk" data-act="logout">Se déconnecter</button>':'')+'</span>'}
 function gateHTML(){
   const a=S.auth,c=S.cfg||{},g=c.google||{},mail=g.email||'agence@remithollet.fr';
@@ -450,6 +453,7 @@ root.addEventListener('click',async e=>{
   const a=b.dataset.act,id=b.dataset.id,v=b.dataset.v;
   if(a==='login'){S.authMsg='';const r=await A.auth.login();if(r.ok){S.me=r.user;S.auth='ok';await enter()}else{S.auth=r.denied?'denied':'needs';S.authMsg=r.message||'';render()}return}
   if(a==='logout'){await flushSave();await A.auth.logout();S.auth='needs';S.me=null;S.data={};render();return}
+  if(a==='saveas'){try{await flushSave();const r=await A.file.saveAs(S.soc,S.period[S.soc]);if(r&&r.path)toast('Fichier enregistré : '+r.path)}catch(x){toast('Enregistrement impossible : '+x.message)}return}
   if(a==='chooseroot'){const r=await A.cfg.chooseRoot();if(r&&r.cfg){S.cfg=r.cfg;S.data={};await load();render();refreshInbox();toast('Dossier enregistré.')}return}
   if(S.auth!=='ok')return;
   const l=id?find(id):null,st=store();

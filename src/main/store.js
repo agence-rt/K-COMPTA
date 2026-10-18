@@ -49,7 +49,7 @@ function readComptaFile(file) {
 }
 
 class Store {
-  constructor(comptaRoot) { this.base = path.join(comptaRoot, 'AGOA-COMPTA'); }
+  constructor(comptaRoot) { this.base = path.join(comptaRoot, 'AGOA-COMPTA'); this.keep = Store.keep; this.backupEvery = Store.backupEvery; }
   inboxDir() { return path.join(this.base, 'A-TRAITER'); }
   periodDir(soc, periodId) {
     const p = C.periodInfo(soc, periodId); if (!p) throw new Error('Période inconnue : ' + periodId);
@@ -67,7 +67,33 @@ class Store {
   }
   save(soc, periodId, data) {
     data.updated = new Date().toISOString();
-    writeAtomic(this.composeFile(soc, periodId), JSON.stringify(wrap(data), null, 1));
+    const file = this.composeFile(soc, periodId), json = JSON.stringify(wrap(data), null, 1);
+    try { this.backup(file, soc + '/' + periodId); } catch (e) { /* une sauvegarde de secours ratée ne doit jamais bloquer l'enregistrement */ }
+    writeAtomic(file, json);
+  }
+  /** Sauvegardes de secours : avant d'écraser periode.compta, l'état précédent est copié dans backups/ (au plus une copie toutes les
+   *  `backupEvery` ms, la première dès le premier enregistrement de la session). On garde les `keep` plus récentes. */
+  backup(file, key) {
+    if (!fs.existsSync(file)) return;
+    const now = Date.now(), last = Store.lastBackup;
+    if (last[file] && now - last[file] < this.backupEvery) return;
+    const dir = path.join(path.dirname(file), 'backups'); mkdir(dir);
+    const st = new Date(now), p2 = n => String(n).padStart(2, '0');
+    const stamp = st.getFullYear() + p2(st.getMonth() + 1) + p2(st.getDate()) + '-' + p2(st.getHours()) + p2(st.getMinutes()) + p2(st.getSeconds()) + '-' + String(st.getMilliseconds()).padStart(3, '0');
+    retryFs(() => fs.copyFileSync(file, path.join(dir, 'periode_' + stamp + '.compta')));
+    last[file] = now;
+    const all = fs.readdirSync(dir).filter(n => /^periode_.*\.compta$/.test(n)).sort();
+    all.slice(0, Math.max(0, all.length - this.keep)).forEach(n => { try { fs.unlinkSync(path.join(dir, n)); } catch (e) { /* ignore */ } });
+  }
+  listBackups(soc, periodId) {
+    const dir = path.join(this.periodDir(soc, periodId), 'backups');
+    try { return fs.readdirSync(dir).filter(n => /^periode_.*\.compta$/.test(n)).sort().reverse(); } catch (e) { return []; }
+  }
+  /** Écrit une copie .compta de la période à l'emplacement choisi par l'utilisateur. */
+  exportCompta(soc, periodId, dest) {
+    const data = this.load(soc, periodId); data.updated = new Date().toISOString();
+    writeAtomic(dest, JSON.stringify(wrap(data), null, 1));
+    return dest;
   }
   has(soc, periodId) { return fs.existsSync(this.composeFile(soc, periodId)) || fs.existsSync(path.join(this.periodDir(soc, periodId), 'periode.json')); }
 
@@ -169,4 +195,8 @@ class Store {
     return out;
   }
 }
+Store.keep = 10;                    // nombre de sauvegardes de secours conservées par période
+Store.backupEvery = 5 * 60 * 1000;  // intervalle minimal entre deux sauvegardes de secours
+Store.lastBackup = {};              // partagé entre toutes les instances (l'API recrée un Store à chaque appel)
+
 module.exports = { Store, uniqueName, readComptaFile, FORMAT, writeAtomic };

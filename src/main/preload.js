@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('agoa', {
   inbox: { list: () => call('inbox:list'), importAll: () => call('inbox:importAll') },
   statement: { pick: () => call('statement:pick') },
   doc: { pick: (s, p, l) => call('doc:pick', s, p, l), open: (s, p, r) => call('doc:open', s, p, r), read: (s, p, r) => call('doc:read', s, p, r) },
+  file: { saveAs: (s, p) => call('file:saveAs', s, p), backups: (s, p) => call('file:backups', s, p) },
   folder: { open: (s, p, sub) => call('folder:open', s, p, sub) },
   export: { run: (s, p, k) => call('export:run', s, p, k) }
 });

@@ -26,6 +26,7 @@ function boot() {
   const auth = new Auth({ required: REQUIRE_GOOGLE, getConfig: () => config.get(), openExternal: url => shell.openExternal(url) });
   const dialogs = {
     folder: async title => { const r = await dialog.showOpenDialog(win, { title, properties: ['openDirectory'] }); return r.canceled ? null : r.filePaths[0]; },
+    save: async (title, name, filters) => { const r = await dialog.showSaveDialog(win, { title, defaultPath: name, filters }); return r.canceled ? null : r.filePath; },
     files: async (title, filters, multi) => { const r = await dialog.showOpenDialog(win, { title, filters, properties: multi ? ['openFile', 'multiSelections'] : ['openFile'] }); return r.canceled ? [] : r.filePaths; }
   };
   const api = createApi({ config, auth, dialogs, pending: { take: () => { const p = pendingOpen; pendingOpen = null; return p; } }, version: app.getVersion(), openPath: async p => { const e = await shell.openPath(p); if (e) throw new Error(e); } });
